@@ -1,0 +1,58 @@
+[package]
+name = "magic-osc"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Apprenez une surface MIDI a une console en OSC."
+publish = false
+
+[[bin]]
+name = "magic-osc"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# L'application vit dans la zone de notification des l'etape 2, la fenetre
+# n'en est qu'une facette. `tray-icon` doit etre present pour ca ; les icones
+# PNG embarquees sont decodees par Tauri a l'execution via `image-png`.
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ── MIDI ─────────────────────────────────────────────────────────────────────
+# `midir` abstrait CoreMIDI (macOS), WinMM (Windows), ALSA (Linux). Une seule
+# interface pour les trois OS, et marche sur Raspberry Pi 4 sans effort.
+# L'alternative `coremidi` + `windows_media` + `alsa` separes multiplierait
+# le code conditionnel sans gain : le MIDI n'a pas de subtilite OS visible
+# par l'utilisateur.
+midir = "0.10"
+
+# ── OSC ──────────────────────────────────────────────────────────────────────
+# `rosc` encode/decode OSC (bundles compris). UDP via `tokio::net::UdpSocket`
+# directement, pas de couche supplementaire a trainer. TCP reserve pour les
+# consoles (Allen & Heath, Yamaha via pont) qui le demandent, meme code
+# `rosc` reutilise.
+rosc = "0.11"
+
+# ── Asynchrone ───────────────────────────────────────────────────────────────
+# ⚠️ `tokio` est declare EXPLICITEMENT bien que Tauri en tire deja un : dependre
+# d'une caisse par transitivite laisse une mise a jour de Tauri decider de
+# notre version. Meme regle que dans oyant-desktop.
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "macros", "sync", "time"] }
+
+# ── Chemins de configuration ─────────────────────────────────────────────────
+# XDG sur Linux, ~/Library/Application Support sur macOS,
+# %APPDATA% sur Windows. `directories` fait le choix pour les trois.
+directories = "5"
+
+# ── Plugins Tauri utiles ─────────────────────────────────────────────────────
+tauri-plugin-notification = "2"
+tauri-plugin-clipboard-manager = "2"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true

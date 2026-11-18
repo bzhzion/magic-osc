@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "magic-osc",
+  "version": "0.0.0",
+  "identifier": "com.breizhzion.magic-osc",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "magic-osc",
+        "width": 960,
+        "height": 640,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [],
+    "category": "Utility",
+    "shortDescription": "MIDI learn vers OSC pour consoles son et lumiere",
+    "longDescription": "Branchez un controleur MIDI et une console son ou lumiere qui parle OSC. magic-osc traduit en temps reel ce qui arrive du MIDI vers l'action que vous choisissez cote console."
+  }
+}

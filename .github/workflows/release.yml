@@ -1,0 +1,141 @@
+# Publication sur tag vX.Y.Z. Rien ne se publie sur un push de branche.
+#
+# Cinq cibles : macOS x64, macOS arm64, Windows x64, Linux x64, Linux arm64
+# (Raspberry Pi). Le ARM64 passe par cross-compile (`cargo-xwin`-style via
+# conteneur).
+#
+# Depot public : runners GitHub gratuits.
+#
+# Les etapes qui CHERCHENT l'outillage au lieu de l'installer sont conservees
+# telles quelles : elles echouent en disant quoi faire, ce qui vaut mieux
+# qu'un message de compilateur. La regle « ne rien installer sur machine
+# partagee » s'applique aussi aux runners, meme jetables : un workflow
+# d'install silencieux est un comportement a eviter par principe.
+
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Deux tags rapproches ne doivent jamais se doubler : une ancienne version
+# qui finit en dernier republierait par-dessus la nouvelle. Scenario avere
+# sur justmakeq le 2026-09-06.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  construire:
+    name: ${{ matrix.cible }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { nom: linux-x64, cible: linux-x64, runner: ubuntu-latest, binaire: magic-osc, archive: tar.gz }
+          - { nom: linux-arm64, cible: linux-arm64, runner: ubuntu-latest, binaire: magic-osc, archive: tar.gz, cross: true }
+          - { nom: windows, cible: windows-x64, runner: windows-latest, binaire: magic-osc.exe, archive: zip }
+          - { nom: macos-x64, cible: macos-x64, runner: macos-latest, binaire: magic-osc, archive: tar.gz, rust_target: x86_64-apple-darwin }
+          - { nom: macos-arm64, cible: macos-arm64, runner: macos-latest, binaire: magic-osc, archive: tar.gz }
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Determiner la version depuis le tag
+        id: version
+        shell: bash
+        run: |
+          ref="${GITHUB_REF##*/}"
+          version="${ref#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "MAGIC_OSC_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Installer les dependances systeme Tauri (Linux x64)
+        if: matrix.nom == 'linux-x64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libasound2-dev \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libayatana-appindicator3-dev \
+            patchelf
+
+      - name: Preparer la cross-compilation ARM64 (Linux arm64)
+        if: matrix.cross
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu qemu-user-static
+          rustup target add aarch64-unknown-linux-gnu
+
+      - name: Preparer la cible macOS x64
+        if: matrix.rust_target == 'x86_64-apple-darwin'
+        run: rustup target add x86_64-apple-darwin
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Installer dependances Node
+        run: npm ci --no-audit --no-fund
+
+      - name: Construire le frontend
+        run: npm run build
+
+      - name: Construire le binaire natif
+        working-directory: src-tauri
+        shell: bash
+        run: |
+          if [ -n "${{ matrix.rust_target }}" ]; then
+            cargo build --release --target "${{ matrix.rust_target }}" --locked
+            cp "target/${{ matrix.rust_target }}/release/${{ matrix.binaire }}" "target/release/${{ matrix.binaire }}"
+          elif [ "${{ matrix.cible }}" = "linux-arm64" ]; then
+            CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+              cargo build --release --target aarch64-unknown-linux-gnu --locked
+            cp "target/aarch64-unknown-linux-gnu/release/${{ matrix.binaire }}" "target/release/${{ matrix.binaire }}"
+          else
+            cargo build --release --locked
+          fi
+
+      - name: Verifier que --version rend bien le tag
+        working-directory: src-tauri
+        shell: bash
+        if: "!matrix.cross && matrix.nom != 'macos-x64'"
+        run: |
+          sortie=$("./target/release/${{ matrix.binaire }}" --version)
+          echo "sortie: $sortie"
+          echo "$sortie" | grep -q "${{ steps.version.outputs.version }}" || {
+            echo "::error::Version du binaire differente du tag"
+            exit 1
+          }
+
+      - name: Empaqueter
+        shell: bash
+        run: |
+          mkdir -p dist-release
+          cd src-tauri/target/release
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            7z a "../../../dist-release/magic-osc-${{ matrix.cible }}.zip" "${{ matrix.binaire }}"
+          else
+            tar czf "../../../dist-release/magic-osc-${{ matrix.cible }}.tar.gz" "${{ matrix.binaire }}"
+          fi
+
+      - name: Televerser les artefacts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: dist-release/*
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
