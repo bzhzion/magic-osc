@@ -32,10 +32,12 @@ fn version() -> String {
 }
 
 /// Regle (ou remplace) la destination OSC. Hote peut etre une IP ou un nom
-/// resolvable. Port par defaut Eos : 8000.
+/// resolvable. Port par defaut Eos : 8000. `app` est injecte automatiquement
+/// par Tauri : il sert a emettre l'evenement `eos-wheel-feedback` quand un
+/// message de feedback Eos arrive sur la socket.
 #[tauri::command]
-fn regler_destination_osc(hote: String, port: u16) -> Result<(), String> {
-    osc::regler_destination(&hote, port)
+fn regler_destination_osc(hote: String, port: u16, app: tauri::AppHandle) -> Result<(), String> {
+    osc::regler_destination(&hote, port, app)
 }
 
 /// Envoie un message OSC dont les arguments sont deja typees cote frontend.
@@ -127,21 +129,16 @@ fn eos_key_stop(press: bool) -> Result<(), String> {
     osc::envoyer(consoles::etc_eos::KEY_STOP, vec![OscType::Int(v)])
 }
 
-/// Envoie un delta sur un parametre Eos nomme (pan, tilt, intens, zoom...).
-/// L'API ETC Eos n'expose pas les encoders par index : chaque encoder de
-/// magic-osc doit choisir quel parametre il pilote. Adresse composee :
-/// `/eos/active/wheel/coarse/<param>`.
+/// Fait tourner l'encodeur physique N (1..=4), quel que soit le parametre
+/// que la console lui a actuellement assigne. Adresse par INDEX
+/// (`/eos/active/switch/<N>`), jamais par nom de parametre : c'est Eos qui
+/// route en interne. Voir le commentaire de `ACTIVE_SWITCH_PREFIXE`.
 #[tauri::command]
-fn eos_wheel_encoder(param: String, delta: f32) -> Result<(), String> {
-    let p = param.trim();
-    if p.is_empty() {
-        return Err("parametre vide".to_string());
+fn eos_wheel_switch(n: u8, delta: f32) -> Result<(), String> {
+    if !(1..=4).contains(&n) {
+        return Err(format!("encodeur hors plage : {n}"));
     }
-    // Les noms sont alphanumeriques sans espaces dans l'API Eos.
-    if !p.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
-        return Err(format!("nom de parametre invalide : {p}"));
-    }
-    let adresse = format!("{}{p}", consoles::etc_eos::WHEEL_ACTIVE_COARSE_PREFIXE);
+    let adresse = format!("{}{n}", consoles::etc_eos::ACTIVE_SWITCH_PREFIXE);
     osc::envoyer(&adresse, vec![OscType::Float(delta)])
 }
 
@@ -187,7 +184,7 @@ fn main() {
             eos_fader_master,
             eos_key_go,
             eos_key_stop,
-            eos_wheel_encoder,
+            eos_wheel_switch,
             eos_wheel_level,
         ])
         .run(tauri::generate_context!())

@@ -15,14 +15,17 @@ est renommée en numéro de version au moment de poser le tag.
   submaster N sans aucune configuration préalable. Idem pour le bump : `/eos/sub/N/fire`.
 - **STOP/BACK** faisait apparaître « cue1/Stop Back » côté console : l'adresse
   `/eos/key/stop_back` était invalide. La touche correcte est `/eos/key/stop` tout court.
-- **Encoders** : `/eos/active_wheel/N` (index numérique) n'existe pas dans l'API OSC Eos —
-  testé sur Mac, sans effet. L'API Eos adresse des paramètres **nommés**
-  (`/eos/active/wheel/coarse/<param>`, ex. `pan`, `tilt`, `intens`, `zoom`), jamais un
-  index d'encodeur physique. Chaque encodeur `E1`-`E4` a maintenant son propre menu
-  déroulant pour choisir le paramètre qu'il pilote (Intens, Pan, Tilt, Zoom, Iris, Edge,
-  Shutter, couleurs RGBAW, CTO/CTS, Hue/Saturation, Gobo Select, Rot 1/2), persisté en
-  local. Sans sélection, l'encodeur n'envoie rien. Approche calquée sur Luminosus Eos
-  Edition (`EosEncoderBlock.cpp`).
+- **Encoders** : retour utilisateur — « ils doivent se peupler en fonction de ce à quoi ils
+  sont assignés sur Eos en fonction de la sélection », pas d'un choix manuel. Après vérification
+  dans le code source de Luminosus Eos Edition (`EosActiveChannelsManager.cpp`), il y a bien
+  deux adresses dédiées : Eos **envoie** en continu `/eos/out/active/wheel/<1..4>` (chaîne
+  `"<label>  [<valeur>]"`, vide si l'encodeur n'a rien d'assigné) dès que la sélection ou la
+  page change, et **reçoit** sur `/eos/active/switch/<1..4>` pour faire tourner l'encodeur N
+  quel que soit le paramètre qui lui est affecté à l'instant — adressage par index physique,
+  jamais par nom. magic-osc écoute maintenant ce feedback sur la même socket UDP que l'envoi
+  (Eos répond au port d'origine de la requête) et affiche en direct, sous chaque encodeur
+  `E1`-`E4`, le nom exact du paramètre assigné par la console, grisé et inerte tant qu'aucun
+  paramètre n'y est affecté. Le menu déroulant manuel de la version précédente est retiré.
 
 ### Ajouté
 - **Icônes de l'application** : jeu placeholder (rond rouge spectacle, lettres `mo` blanches)

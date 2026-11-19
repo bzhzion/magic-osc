@@ -7,6 +7,23 @@
 // bouge son protocole.
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+
+// Diffuse par le backend (osc.rs) a chaque feedback /eos/out/active/wheel/N
+// recu depuis la console : l'encodeur N affiche desormais le VRAI parametre
+// que la console lui a assigne a l'instant, pas un choix fait a la main.
+interface FeedbackEncodeur {
+  index: number;      // 1..4
+  libelle: string;    // vide = encodeur inassigne actuellement
+  valeur: number | null;
+}
+
+const feedbackEncodeurs = new Map<number, (f: FeedbackEncodeur) => void>();
+
+listen<FeedbackEncodeur>("eos-wheel-feedback", (event) => {
+  const cb = feedbackEncodeurs.get(event.payload.index);
+  if (cb) cb(event.payload);
+});
 
 // ── Barre de reglages (hote + port + bouton « connecter ») ──────────────
 function monterBarre(racine: HTMLElement) {
@@ -57,62 +74,43 @@ function monterBarre(racine: HTMLElement) {
   });
 }
 
-// ── Encoder rotatif + menu du parametre pilote ────────────────────────
-// ETC Eos n'expose pas les 4 encoders physiques par index : on doit dire
-// quel parametre (pan, tilt, intens, zoom...) on veut pousser. L'utilisateur
-// choisit pour chaque encoder ; on sauvegarde le choix dans localStorage.
-const PARAMETRES_EOS = [
-  { val: "", libelle: "(aucun)" },
-  { val: "intens", libelle: "Intens" },
-  { val: "pan", libelle: "Pan" },
-  { val: "tilt", libelle: "Tilt" },
-  { val: "zoom", libelle: "Zoom" },
-  { val: "iris", libelle: "Iris" },
-  { val: "edge", libelle: "Edge" },
-  { val: "shutter", libelle: "Shutter" },
-  { val: "red", libelle: "Red" },
-  { val: "green", libelle: "Green" },
-  { val: "blue", libelle: "Blue" },
-  { val: "amber", libelle: "Amber" },
-  { val: "white", libelle: "White" },
-  { val: "cto", libelle: "CTO" },
-  { val: "cts", libelle: "CTS" },
-  { val: "hue", libelle: "Hue" },
-  { val: "saturation", libelle: "Saturation" },
-  { val: "gobo_select", libelle: "Gobo Select" },
-  { val: "rot1", libelle: "Rot 1" },
-  { val: "rot2", libelle: "Rot 2" },
-];
-
+// ── Encoder rotatif (dial drag vertical) ────────────────────────────────
+// L'encodeur affiche EN DIRECT le parametre que la console lui a assigne
+// (feedback /eos/out/active/wheel/N retransmis par le backend), au lieu
+// qu'on le choisisse a la main : c'est exactement ce que fait le bandeau
+// d'encodeurs physiques d'une Ion XE, qui se reaffecte selon la page
+// ouverte sur l'ecran de la console. Un encodeur sans parametre assigne
+// (libelle vide) est grise et ne pousse aucune valeur.
 function monterEncoder(parent: HTMLElement, index: number) {
   const bloc = document.createElement("div");
   bloc.className = "encoder";
   bloc.innerHTML = `
     <div class="nom">E${index}</div>
     <div class="dial"></div>
-    <select></select>
+    <div class="parametre">(en attente)</div>
+    <div class="parametre-valeur"></div>
   `;
   parent.appendChild(bloc);
 
   const dial = bloc.querySelector<HTMLDivElement>(".dial")!;
-  const menu = bloc.querySelector<HTMLSelectElement>("select")!;
+  const paramAff = bloc.querySelector<HTMLDivElement>(".parametre")!;
+  const valeurAff = bloc.querySelector<HTMLDivElement>(".parametre-valeur")!;
 
-  PARAMETRES_EOS.forEach(p => {
-    const o = document.createElement("option");
-    o.value = p.val; o.textContent = p.libelle;
-    menu.appendChild(o);
+  let assigne = false;
+
+  feedbackEncodeurs.set(index, (f) => {
+    assigne = f.libelle.trim().length > 0;
+    paramAff.textContent = assigne ? f.libelle : "(aucun)";
+    valeurAff.textContent = assigne && f.valeur !== null ? String(f.valeur) : "";
+    dial.classList.toggle("inassigne", !assigne);
   });
-
-  const cleSauvegarde = `magic-osc.encoder.${index}`;
-  const sauv = localStorage.getItem(cleSauvegarde);
-  if (sauv !== null) menu.value = sauv;
-  menu.addEventListener("change", () => localStorage.setItem(cleSauvegarde, menu.value));
 
   let actif = false;
   let dernier = 0;
   let angle = 0;
 
   const debut = (ev: PointerEvent) => {
+    if (!assigne) return;
     actif = true;
     dernier = ev.clientY;
     dial.classList.add("actif");
@@ -125,10 +123,8 @@ function monterEncoder(parent: HTMLElement, index: number) {
     dernier = ev.clientY;
     angle += dy;
     dial.style.transform = `rotate(${angle}deg)`;
-    const param = menu.value;
-    if (!param) return;   // encoder non assigne : rien a envoyer
     const delta = dy / 20;
-    invoke("eos_wheel_encoder", { param, delta }).catch(() => {});
+    invoke("eos_wheel_switch", { n: index, delta }).catch(() => {});
   };
   const fin = () => { actif = false; dial.classList.remove("actif"); };
 

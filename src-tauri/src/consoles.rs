@@ -49,13 +49,23 @@ pub mod etc_eos {
     pub const KEY_STOP: &str = "/eos/key/stop";
 
     // ── Encoders (4 boutons rotatifs au-dessus de l'ecran) ─────────────────
-    // L'API OSC ETC Eos n'expose PAS les encoders physiques par index : elle
-    // adresse des parametres NOMMES (pan, tilt, intens, zoom, iris...). La
-    // commande partante est `/eos/active/wheel/coarse/<param>` avec un delta
-    // flottant. L'utilisateur de magic-osc choisit pour chaque encoder quel
-    // parametre il controle (meme approche que Luminosus Eos Edition dans
-    // `EosEncoderBlock.cpp`).
-    pub const WHEEL_ACTIVE_COARSE_PREFIXE: &str = "/eos/active/wheel/coarse/";
+    // Deux adresses complementaires, confirmees par le code source de
+    // Luminosus Eos Edition (EosActiveChannelsManager.cpp) :
+    //
+    // - EN SORTIE (feedback, Eos -> magic-osc) : `/eos/out/active/wheel/<1..4>`
+    //   avec un argument string "<label>  [<valeur>]". Eos l'envoie des que
+    //   la selection change ou qu'un encodeur change de parametre/valeur.
+    //   Label vide = cet encodeur n'a aucun parametre assigne actuellement.
+    //   C'est ce qui permet a magic-osc d'afficher le BON nom sous chaque
+    //   encodeur sans que l'utilisateur ait a le choisir lui-meme.
+    //
+    // - EN ENTREE (commande, magic-osc -> Eos) : `/eos/active/switch/<1..4>`
+    //   avec un delta flottant. Eos route en interne vers le parametre
+    //   actuellement affecte a cet index, quel qu'il soit : adresser par
+    //   INDEX physique, jamais par nom, contrairement a ce qu'un premier
+    //   essai avait suppose.
+    pub const OUT_ACTIVE_WHEEL_PREFIXE: &str = "/eos/out/active/wheel/";
+    pub const ACTIVE_SWITCH_PREFIXE: &str = "/eos/active/switch/";
 
     // ── Level Wheel ────────────────────────────────────────────────────────
     // La grosse molette d'intensite. Delta float.
