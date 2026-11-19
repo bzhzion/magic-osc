@@ -9,6 +9,10 @@ est renommée en numéro de version au moment de poser le tag.
 ## [Unreleased]
 
 ### Ajouté
+- **Icônes de l'application** : jeu placeholder (rond rouge spectacle, lettres `mo` blanches)
+  aux tailles exigées par Tauri (32×32, 128×128, 128×128@2x, icon.png 512px, icon.ico
+  multi-page pour Windows). À remplacer par un jeu vectoriel soigné quand l'identité
+  visuelle sera posée. Débloque le build : sans icône, `tauri::generate_context!` échoue.
 - **Console graphique ETC Eos (Ion XE)** : 20 submasters avec leur bump button, 2 Master
   Playback faders, boutons GO et STOP/BACK, 4 encoders (Pan/Tilt/Zoom/Iris), Level Wheel.
   L'utilisateur saisit l'IP et le port de la console dans une barre en haut, et les gestes
