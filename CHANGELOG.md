@@ -9,6 +9,11 @@ est renommée en numéro de version au moment de poser le tag.
 ## [Unreleased]
 
 ### Ajouté (console ETC Eos)
+- **Sous-pages dans chaque catégorie d'encodeur** : rappuyer sur le même bouton de
+  catégorie avance à la sous-page suivante (bloc de 4 paramètres), avec retour au début
+  une fois la liste épuisée — exactement comme le bandeau physique d'une Ion XE. Exemple
+  confirmé sur Shutter (Robe Robin T5) : 1ᵉʳ appui → Frame Angle/Thrust C puis A, 2ᵉ appui
+  → Frame Angle/Thrust D puis B, 3ᵉ appui → Frame Assembly seul.
 - **Pagination des 4 encodeurs par catégorie, gérée côté magic-osc** : diagnostic confirmé
   par capture (`wheel/1` à `wheel/4` restent toujours identiques quelle que soit la
   catégorie pressée) — `/eos/active/wheel/<index>` est la liste **complète et fixe** des

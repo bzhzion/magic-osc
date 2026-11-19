@@ -36,6 +36,12 @@ const assignationEncodeurs: number[] = [1, 2, 3, 4];
 // null tant qu'aucun bouton n'a ete presse (affiche alors les 4 premiers
 // parametres du patch, comportement par defaut).
 let categorieActive: string | null = null;
+// Sous-page (bloc de 4 parametres) dans la categorie active. Rappuyer sur le
+// MEME bouton de categorie avance d'une sous-page (avec retour au debut),
+// exactement comme le bandeau physique d'une Ion XE : ex. Shutter montre
+// d'abord Frame Angle/Thrust C puis A, puis au rappui D puis B, puis au
+// rappui suivant Frame Assembly seul.
+let pageCourante = 0;
 
 // Mots-cles (sous-chaine, insensible a la casse) identifiant les noms de
 // parametre ETC habituels de chaque categorie CIA. Heuristique necessaire
@@ -57,21 +63,24 @@ const MOTS_CLES_CATEGORIE: Record<string, string[]> = {
 
 // Recalcule, pour les 4 emplacements physiques, quel index OSC reel afficher
 // et piloter : soit les 4 premiers parametres (categorie par defaut), soit
-// les parametres de la categorie choisie (filtrage par mot-cle).
+// la sous-page courante des parametres de la categorie choisie (filtrage
+// par mot-cle, puis decoupage en blocs de 4 selon `pageCourante`).
 function recalculerPageEncodeurs() {
   let indices: number[];
   if (categorieActive === null) {
     indices = [1, 2, 3, 4];
   } else {
     const mots = MOTS_CLES_CATEGORIE[categorieActive] ?? [];
-    indices = Array.from(tousLesWheels.entries())
+    const correspondants = Array.from(tousLesWheels.entries())
       .filter(([, f]) => {
         const nom = f.libelle.split("  [")[0].trim().toLowerCase();
         return nom.length > 0 && mots.some((m) => nom.includes(m));
       })
       .sort((a, b) => a[0] - b[0])
-      .map(([idx]) => idx)
-      .slice(0, 4);
+      .map(([idx]) => idx);
+    const nbPages = Math.max(1, Math.ceil(correspondants.length / 4));
+    pageCourante = ((pageCourante % nbPages) + nbPages) % nbPages;
+    indices = correspondants.slice(pageCourante * 4, pageCourante * 4 + 4);
   }
   for (let emplacement = 0; emplacement < 4; emplacement++) {
     const idx = indices[emplacement];
@@ -411,7 +420,14 @@ function monterCategories(parent: HTMLElement) {
       // bouton) : pilote la pagination des 4 encodeurs.
       boutons.forEach((autre) => autre.classList.remove("actif"));
       b.classList.add("actif");
-      categorieActive = cat.categorie;
+      if (categorieActive === cat.categorie) {
+        // Meme categorie rappuyee : sous-page suivante (comme la console
+        // physique). Le wrap-around est gere dans recalculerPageEncodeurs.
+        pageCourante += 1;
+      } else {
+        categorieActive = cat.categorie;
+        pageCourante = 0;
+      }
       recalculerPageEncodeurs();
     };
     b.addEventListener("pointerdown", (e) => { e.preventDefault(); press(); });
