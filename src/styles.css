@@ -1,0 +1,197 @@
+/* Console ETC Eos (Ion XE) reimplementee en HTML/CSS.
+   Fond sombre type regie, contrastes fermes, elements gros au toucher. */
+
+:root {
+  --fond: #15171c;
+  --fond-2: #1d2029;
+  --accent: #d64d4d;      /* Eos rouge GO */
+  --accent-stop: #3a4d7a; /* Eos bleu STOP */
+  --encore: #2c3038;
+  --bord: #2e343f;
+  --texte: #e4e6eb;
+  --texte-muet: #8d94a3;
+  --vert: #4caf50;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; height: 100%; background: var(--fond); color: var(--texte);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+
+#app { height: 100vh; display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+/* ── Barre de reglages ─────────────────────────────────────────────────── */
+.barre {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-bottom: 1px solid var(--bord);
+  background: var(--fond-2);
+}
+.barre label { color: var(--texte-muet); font-size: 12px; }
+.barre input { background: var(--encore); border: 1px solid var(--bord);
+  color: var(--texte); padding: 4px 8px; border-radius: 4px; font: inherit;
+  font-size: 12px; }
+.barre button { background: var(--accent-stop); color: white; border: none;
+  padding: 6px 12px; border-radius: 4px; cursor: pointer; font: inherit; font-size: 12px; }
+.barre button:hover { opacity: 0.9; }
+.barre .statut { margin-left: auto; color: var(--texte-muet); font-size: 12px; }
+.barre .statut.ok { color: var(--vert); }
+.barre .statut.ko { color: var(--accent); }
+
+/* ── Console ──────────────────────────────────────────────────────────── */
+.console {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+
+/* --- Haut : encoders + wheel --- */
+.haut {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) 2fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.encoder {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 10px;
+  background: var(--fond-2);
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+}
+.encoder .nom { font-size: 11px; color: var(--texte-muet); text-transform: uppercase; }
+.encoder .dial {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #343a46 0%, #1b1f28 70%);
+  border: 2px solid var(--bord);
+  position: relative; cursor: grab;
+  touch-action: none;
+}
+.encoder .dial::after {
+  content: ""; position: absolute; top: 6px; left: 50%; width: 3px; height: 18px;
+  background: var(--accent); transform: translateX(-50%);
+  border-radius: 2px;
+}
+.encoder .dial.actif { cursor: grabbing; }
+
+.wheel {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 10px;
+  background: var(--fond-2);
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+}
+.wheel .nom { font-size: 11px; color: var(--texte-muet); text-transform: uppercase; }
+.wheel .molette {
+  width: 100%; max-width: 360px; height: 100px;
+  background: linear-gradient(90deg, #262a33 0%, #343a46 50%, #262a33 100%);
+  border: 2px solid var(--bord);
+  border-radius: 12px;
+  position: relative; cursor: ew-resize;
+  touch-action: none; overflow: hidden;
+}
+.wheel .molette .indicateur {
+  position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent);
+  left: 50%;
+}
+.wheel .molette .graduations {
+  position: absolute; inset: 0; display: flex; justify-content: space-around;
+  align-items: center; pointer-events: none;
+}
+.wheel .molette .graduations span {
+  width: 1px; height: 30px; background: var(--bord); opacity: 0.6;
+}
+
+/* --- Bas : 20 faders + Master + Go/Stop --- */
+.bas {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+}
+
+.submasters {
+  display: grid;
+  grid-template-columns: repeat(20, 1fr);
+  gap: 6px;
+  background: var(--fond-2);
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.fader {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  min-width: 0;
+}
+.fader .num { font-size: 10px; color: var(--texte-muet); }
+.fader .piste {
+  width: 28px; height: 220px; position: relative;
+  background: linear-gradient(to top, #1b1f28, #2b313c);
+  border: 1px solid var(--bord); border-radius: 6px;
+  cursor: pointer; touch-action: none;
+}
+.fader .poignee {
+  position: absolute; left: -4px; right: -4px; height: 24px;
+  background: linear-gradient(180deg, #d1d4db, #7f8591);
+  border: 1px solid #000; border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+.fader .poignee::after {
+  content: ""; position: absolute; left: 25%; right: 25%; top: 50%;
+  height: 2px; background: #15171c; border-radius: 1px;
+}
+.fader .valeur { font-size: 10px; color: var(--texte-muet); font-variant-numeric: tabular-nums; }
+.fader .bump {
+  width: 100%; height: 36px;
+  background: var(--encore); border: 1px solid var(--bord); color: var(--texte);
+  border-radius: 6px; font-size: 11px; cursor: pointer;
+  touch-action: manipulation; user-select: none;
+}
+.fader .bump:active, .fader .bump.actif {
+  background: var(--accent); color: white; border-color: var(--accent);
+}
+
+/* --- Master Playback (2 grands faders + Go + Stop) --- */
+.masters {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: 1fr auto;
+  gap: 12px;
+  background: var(--fond-2);
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.master-fader {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.master-fader .num { font-size: 12px; color: var(--texte-muet); }
+.master-fader .piste {
+  width: 52px; height: 260px; position: relative;
+  background: linear-gradient(to top, #1b1f28, #2b313c);
+  border: 1px solid var(--bord); border-radius: 8px;
+  cursor: pointer; touch-action: none;
+}
+.master-fader .poignee {
+  position: absolute; left: -6px; right: -6px; height: 36px;
+  background: linear-gradient(180deg, #d1d4db, #7f8591);
+  border: 1px solid #000; border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+
+.gostop { grid-column: span 2; display: flex; justify-content: space-between; gap: 8px; }
+.go, .stop {
+  flex: 1; height: 52px; border: none; border-radius: 8px;
+  color: white; font-weight: 700; font-size: 16px; letter-spacing: 1px;
+  cursor: pointer; touch-action: manipulation;
+}
+.go { background: var(--accent); }
+.go:active, .go.actif { filter: brightness(1.2); }
+.stop { background: var(--accent-stop); }
+.stop:active, .stop.actif { filter: brightness(1.2); }
