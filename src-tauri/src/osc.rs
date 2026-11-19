@@ -186,7 +186,6 @@ fn osc_type_vers_f64(v: &OscType) -> Option<f64> {
 }
 
 fn traiter_message_entrant(m: &OscMessage, app: &AppHandle) {
-    eprintln!("[osc] recu {} args={:?}", m.addr, m.args);
     let segments: Vec<&str> = m.addr.split('/').filter(|s| !s.is_empty()).collect();
 
     // /eos/out/active/wheel/<1..4> : 3 arguments reels (string, int, float),
@@ -208,7 +207,9 @@ fn traiter_message_entrant(m: &OscMessage, app: &AppHandle) {
             // est le FLOAT en position 2, pas l'int en position 1.
             let valeur = m.args.get(2).and_then(osc_type_vers_f64);
             let evt = FeedbackEncodeur { index, libelle, valeur };
-            let _ = app.emit("eos-wheel-feedback", evt);
+            if let Err(e) = app.emit("eos-wheel-feedback", evt) {
+                eprintln!("[osc] emission eos-wheel-feedback echouee : {e}");
+            }
         }
         return;
     }
@@ -225,7 +226,9 @@ fn traiter_message_entrant(m: &OscMessage, app: &AppHandle) {
         if let Ok(n) = segments[4].parse::<u8>() {
             if let Some(OscType::String(label)) = m.args.get(2) {
                 let evt = FeedbackNomSub { n, libelle: label.clone() };
-                let _ = app.emit("eos-sub-name-feedback", evt);
+                if let Err(e) = app.emit("eos-sub-name-feedback", evt) {
+                    eprintln!("[osc] emission eos-sub-name-feedback echouee : {e}");
+                }
             }
         }
     }

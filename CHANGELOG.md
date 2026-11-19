@@ -8,11 +8,18 @@ est renommée en numéro de version au moment de poser le tag.
 
 ## [Unreleased]
 
-### Diagnostic (console ETC Eos)
-- Logs sur la réception du feedback OSC (adresse + arguments de chaque message reçu,
-  erreurs de décodage, arrêt du thread d'écoute) pour comprendre pourquoi encodeurs et
-  nom des subs restent muets alors que le réseau confirme (tcpdump) que les paquets Eos
-  arrivent sur le port d'écoute.
+### Corrigé (console ETC Eos)
+- **Vraie cause finale des encodeurs et du nom des subs muets** : le projet n'avait jamais
+  de dossier `src-tauri/capabilities/`, donc la fenêtre tournait avec le jeu de permissions
+  Tauri par défaut, qui n'inclut PAS `core:event:allow-listen`. Chaque appel JS `listen(...)`
+  échouait silencieusement en arrière-plan (`Unhandled Promise Rejection: event.listen not
+  allowed`, visible seulement dans la console devtools de la fenêtre) : les événements
+  `eos-wheel-feedback` et `eos-sub-name-feedback` étaient bien émis côté Rust (confirmé par
+  capture réseau ET logs de debug), mais ne pouvaient jamais être reçus côté JS. Ajout de
+  `src-tauri/capabilities/default.json` avec `core:event:default`, `notification:default`
+  et `clipboard-manager:default`. Les erreurs d'émission côté Rust (`app.emit`) sont
+  maintenant journalisées au lieu d'être ignorées, pour ne plus reproduire un échec
+  silencieux de ce type.
 
 ### Ajouté (console ETC Eos)
 - **6 boutons de page d'encodeur** au-dessus des encodeurs : Intens, Focus, Color,
