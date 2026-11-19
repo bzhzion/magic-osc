@@ -149,8 +149,7 @@ fn eos_wheel_level(delta: f32) -> Result<(), String> {
 }
 
 /// Touche generique /eos/key/<name>, press/release. Utilisee pour les 6
-/// boutons de categorie (Intens, Focus, Color, Shutter, Image, Form) et
-/// comme brique pour Group/Assert/Load ci-dessous.
+/// boutons de page d'encodeur (Intens, Focus, Color, Shutter, Image, Form).
 #[tauri::command]
 fn eos_key(name: String, press: bool) -> Result<(), String> {
     let adresse = format!("{}{name}", consoles::etc_eos::KEY_PREFIXE);
@@ -158,48 +157,14 @@ fn eos_key(name: String, press: bool) -> Result<(), String> {
     osc::envoyer(&adresse, vec![OscType::Float(v)])
 }
 
-/// Selectionne le submaster N sur la ligne de commande Eos. Prealable a
-/// Group/Assert/Load, qui agissent sur le sub actuellement cible.
-fn selectionner_sub(n: u8) -> Result<(), String> {
+/// Selectionne le submaster N sur la ligne de commande Eos. C'est le
+/// bouton carre present sous chaque fader sur la console physique.
+#[tauri::command]
+fn eos_sub_select(n: u8) -> Result<(), String> {
+    if !(1..=20).contains(&n) {
+        return Err(format!("submaster hors plage : {n}"));
+    }
     osc::envoyer(consoles::etc_eos::SUB_SELECT, vec![OscType::Int(n as i32)])
-}
-
-fn presser_relacher_key(nom: &str) -> Result<(), String> {
-    let adresse = format!("{}{nom}", consoles::etc_eos::KEY_PREFIXE);
-    osc::envoyer(&adresse, vec![OscType::Float(1.0)])?;
-    osc::envoyer(&adresse, vec![OscType::Float(0.0)])
-}
-
-/// Reproduit la sequence console « selectionner le sub N, presser Group » :
-/// il n'existe pas d'adresse /eos/sub/<N>/group dediee, Group est une
-/// touche generale qui agit sur la cible courante.
-#[tauri::command]
-fn eos_sub_group(n: u8) -> Result<(), String> {
-    if !(1..=20).contains(&n) {
-        return Err(format!("submaster hors plage : {n}"));
-    }
-    selectionner_sub(n)?;
-    presser_relacher_key(consoles::etc_eos::KEY_GROUP)
-}
-
-/// Idem pour Assert.
-#[tauri::command]
-fn eos_sub_assert(n: u8) -> Result<(), String> {
-    if !(1..=20).contains(&n) {
-        return Err(format!("submaster hors plage : {n}"));
-    }
-    selectionner_sub(n)?;
-    presser_relacher_key(consoles::etc_eos::KEY_ASSERT)
-}
-
-/// Idem pour Load.
-#[tauri::command]
-fn eos_sub_load(n: u8) -> Result<(), String> {
-    if !(1..=20).contains(&n) {
-        return Err(format!("submaster hors plage : {n}"));
-    }
-    selectionner_sub(n)?;
-    presser_relacher_key(consoles::etc_eos::KEY_LOAD)
 }
 
 /// Demande le nom (label) du submaster N a la console. La reponse arrive
@@ -254,9 +219,7 @@ fn main() {
             eos_wheel_switch,
             eos_wheel_level,
             eos_key,
-            eos_sub_group,
-            eos_sub_assert,
-            eos_sub_load,
+            eos_sub_select,
             eos_sub_demander_nom,
         ])
         .run(tauri::generate_context!())

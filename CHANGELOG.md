@@ -9,16 +9,17 @@ est renommée en numéro de version au moment de poser le tag.
 ## [Unreleased]
 
 ### Ajouté (console ETC Eos)
-- **6 boutons de catégorie d'attribut** au-dessus des encodeurs : Intens, Focus, Color,
-  Shutter, Image, Form. Reproduisent le bandeau physique d'une Ion/Ion XE. Adresse
-  `/eos/key/<nom>` avec `<nom>` = `intensity`, `focus`, `color`, `shutter`, `image`, `form`
-  (noms confirmés par le document officiel ETC « Eos OSC Keys »), argument flottant
-  1.0 au press / 0.0 au release.
-- **Boutons Group, Assert, Load** sous chaque submaster, en plus du Bump existant. Il
-  n'existe pas d'adresse OSC dédiée par sub pour ces trois actions : magic-osc reproduit
-  la séquence console (sélectionner le sub avec `/eos/sub` + numéro, puis presser la
-  touche `/eos/key/group`, `/eos/key/assert` ou `/eos/key/load`), exactement comme le
-  ferait un régisseur au clavier.
+- **6 boutons de page d'encodeur** au-dessus des encodeurs : Intens, Focus, Color,
+  Shutter, Image, Form. Ce sont les boutons qui CHANGENT quels paramètres sont assignés
+  aux 4 encodeurs physiques, pas des filtres d'affichage CIA (erreur de la version
+  précédente, corrigée ci-dessous). Adresse `/eos/key/<nom>` avec `<nom>` =
+  `encoder_category_intensity`, `encoder_category_focus`, `encoder_category_color`,
+  `encoder_category_shutter`, `encoder_category_image`, `encoder_category_form` (noms
+  confirmés par le document officiel ETC « Eos OSC Keys »), argument flottant 1.0 au
+  press / 0.0 au release.
+- **Bouton carré de sélection** sous chaque submaster, en plus du Bump existant :
+  reproduit le bouton physique sous chaque fader de la console, envoie `/eos/sub` +
+  numéro pour sélectionner le sub sur la ligne de commande Eos.
 - **Nom du submaster affiché sous chaque fader**, demandé à la console via
   `/eos/get/sub/<N>` à la connexion (requêtes étalées sur 30 ms pour ne pas arroser Eos de
   20 messages simultanés). La réponse `/eos/out/get/sub/<N>/list/<index>/<count>` est
@@ -32,6 +33,12 @@ est renommée en numéro de version au moment de poser le tag.
   submaster N sans aucune configuration préalable. Idem pour le bump : `/eos/sub/N/fire`.
 - **STOP/BACK** faisait apparaître « cue1/Stop Back » côté console : l'adresse
   `/eos/key/stop_back` était invalide. La touche correcte est `/eos/key/stop` tout court.
+- **6 boutons d'encodeur mal nommés** : la première version utilisait les clés
+  `intensity`/`focus`/`color`/`shutter`/`image`/`form`, qui correspondent en réalité aux
+  filtres d'affichage CIA (boutons physiques différents sur la console), pas à la
+  sélection de page d'encodeur. Remplacées par les clés `encoder_category_*` ci-dessus.
+  Suppression des boutons Group/Assert/Load, qui n'étaient pas les bons boutons
+  physiques recherchés — remplacés par le bouton carré de sélection unique.
 - **Encoders, suite et vraie source du problème** : malgré l'adressage par index déjà en place
   (`/eos/active/switch/<1..4>`, confirmé bon), les encodeurs restaient inertes. Deux causes,
   confirmées cette fois par le document officiel ETC (« Eos Family Show Control User Guide »

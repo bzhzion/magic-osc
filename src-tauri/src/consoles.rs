@@ -47,24 +47,18 @@ pub mod etc_eos {
     // exhaustive des cles OSC <-> macro interne ETC).
     pub const KEY_PREFIXE: &str = "/eos/key/";
 
-    // Boutons de categorie d'attribut (bandeau au-dessus des encodeurs sur
-    // Ion/Ion XE). Noms OSC confirmes dans "Eos OSC Keys.pdf" : intensity,
-    // focus, color, shutter, image, form.
-    pub const KEY_INTENSITY: &str = "intensity";
-    pub const KEY_FOCUS: &str = "focus";
-    pub const KEY_COLOR: &str = "color";
-    pub const KEY_SHUTTER: &str = "shutter";
-    pub const KEY_IMAGE: &str = "image";
-    pub const KEY_FORM: &str = "form";
-
-    // Boutons par submaster : Group, Assert, Load. Pas d'adresse OSC dediee
-    // par sub pour ces trois actions (contrairement a /sub/<N>/fire) :
-    // le fonctionnement reel sur console est "selectionner le sub, puis
-    // presser la touche". On reproduit cette sequence : SUB_SELECT + N,
-    // puis KEY_PREFIXE + nom en press puis release.
-    pub const KEY_GROUP: &str = "group";
-    pub const KEY_ASSERT: &str = "assert";
-    pub const KEY_LOAD: &str = "load";
+    // Boutons de PAGE D'ENCODEUR (bandeau au-dessus des encodeurs sur
+    // Ion/Ion XE) : ils ne filtrent pas un affichage, ils CHANGENT quels
+    // parametres apparaissent sur les 4 encodeurs physiques. A ne pas
+    // confondre avec les touches "intensity"/"focus"/etc. (categorie
+    // d'affichage CIA, action differente). Noms confirmes dans
+    // "Eos OSC Keys.pdf" : prefixe encoder_category_<nom>.
+    pub const KEY_ENC_CAT_INTENSITY: &str = "encoder_category_intensity";
+    pub const KEY_ENC_CAT_FOCUS: &str = "encoder_category_focus";
+    pub const KEY_ENC_CAT_COLOR: &str = "encoder_category_color";
+    pub const KEY_ENC_CAT_SHUTTER: &str = "encoder_category_shutter";
+    pub const KEY_ENC_CAT_IMAGE: &str = "encoder_category_image";
+    pub const KEY_ENC_CAT_FORM: &str = "encoder_category_form";
 
     // ── Encoders (4 boutons rotatifs au-dessus de l'ecran) ─────────────────
     // Confirme par le document officiel, section "Active Parameters" :

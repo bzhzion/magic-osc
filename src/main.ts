@@ -208,31 +208,23 @@ function monterFader(opts: {
   classe: string;
   surValeur: (v: number) => void;
   avecBump?: { surPress: (p: boolean) => void };
-  // Group/Assert/Load : actions ponctuelles (pas de press/release distinct,
-  // Eos les traite comme une impulsion). Nom du sub recupere via
-  // eos_sub_demander_nom et affiche au-dessus de la piste.
-  avecActionsSub?: {
+  // Bouton carre present sous chaque fader sur la console physique :
+  // selectionne le sub sur la ligne de commande Eos (/eos/sub + N). Nom du
+  // sub recupere via eos_sub_demander_nom et affiche au-dessus de la piste.
+  avecSelect?: {
     numeroSub: number;
-    surGroup: () => void;
-    surAssert: () => void;
-    surLoad: () => void;
+    surSelect: () => void;
   };
 }) {
   const bloc = document.createElement("div");
   bloc.className = opts.classe;
   bloc.innerHTML = `
     <div class="num">${opts.numero}</div>
-    ${opts.avecActionsSub ? `<div class="nom-sub">—</div>` : ""}
+    ${opts.avecSelect ? `<div class="nom-sub">—</div>` : ""}
     <div class="piste"><div class="poignee"></div></div>
     <div class="valeur">0 %</div>
     ${opts.avecBump ? `<button class="bump">BUMP</button>` : ""}
-    ${opts.avecActionsSub ? `
-      <div class="actions-sub">
-        <button class="action-grp" title="Group">GRP</button>
-        <button class="action-assert" title="Assert">AST</button>
-        <button class="action-load" title="Load">LD</button>
-      </div>
-    ` : ""}
+    ${opts.avecSelect ? `<button class="select-carre" title="Selectionner"></button>` : ""}
   `;
   opts.parent.appendChild(bloc);
 
@@ -240,17 +232,17 @@ function monterFader(opts: {
   const poignee = bloc.querySelector<HTMLDivElement>(".poignee")!;
   const valeurAff = bloc.querySelector<HTMLDivElement>(".valeur")!;
 
-  if (opts.avecActionsSub) {
+  if (opts.avecSelect) {
     const nomAff = bloc.querySelector<HTMLDivElement>(".nom-sub")!;
-    feedbackNomsSub.set(opts.avecActionsSub.numeroSub, (f) => {
+    feedbackNomsSub.set(opts.avecSelect.numeroSub, (f) => {
       nomAff.textContent = f.libelle || "—";
     });
-    bloc.querySelector<HTMLButtonElement>(".action-grp")!
-      .addEventListener("click", () => opts.avecActionsSub!.surGroup());
-    bloc.querySelector<HTMLButtonElement>(".action-assert")!
-      .addEventListener("click", () => opts.avecActionsSub!.surAssert());
-    bloc.querySelector<HTMLButtonElement>(".action-load")!
-      .addEventListener("click", () => opts.avecActionsSub!.surLoad());
+    const sel = bloc.querySelector<HTMLButtonElement>(".select-carre")!;
+    sel.addEventListener("click", () => {
+      sel.classList.add("actif");
+      setTimeout(() => sel.classList.remove("actif"), 150);
+      opts.avecSelect!.surSelect();
+    });
   }
 
   let valeur = opts.valeurInitiale; // 0..1
@@ -308,17 +300,18 @@ function monterFader(opts: {
   return { placerPoignee };
 }
 
-// ── Boutons de categorie (Intens, Focus, Color, Shutter, Image, Form) ──
-// Boutons d'attribut physiques d'une Ion/Ion XE : ils ne changent rien
-// directement, ils filtrent/affectent les 4 encodeurs au-dessus. Noms OSC
-// confirmes dans le document officiel "Eos OSC Keys".
+// ── Boutons de page d'encodeur (Intens, Focus, Color, Shutter, Image, Form) ──
+// Boutons physiques d'une Ion/Ion XE qui CHANGENT quels parametres sont
+// assignes aux 4 encodeurs au-dessus (pas un filtre d'affichage). Noms OSC
+// confirmes dans le document officiel "Eos OSC Keys" : prefixe
+// encoder_category_<nom>.
 const CATEGORIES_EOS: { nom: string; libelle: string }[] = [
-  { nom: "intensity", libelle: "Intens" },
-  { nom: "focus", libelle: "Focus" },
-  { nom: "color", libelle: "Color" },
-  { nom: "shutter", libelle: "Shutter" },
-  { nom: "image", libelle: "Image" },
-  { nom: "form", libelle: "Form" },
+  { nom: "encoder_category_intensity", libelle: "Intens" },
+  { nom: "encoder_category_focus", libelle: "Focus" },
+  { nom: "encoder_category_color", libelle: "Color" },
+  { nom: "encoder_category_shutter", libelle: "Shutter" },
+  { nom: "encoder_category_image", libelle: "Image" },
+  { nom: "encoder_category_form", libelle: "Form" },
 ];
 
 function monterCategories(parent: HTMLElement) {
@@ -366,8 +359,8 @@ async function demarrer() {
   console_.className = "console";
   racine.appendChild(console_);
 
-  // Boutons de categorie d'attribut, juste au-dessus des encodeurs (comme
-  // sur une vraie Ion/Ion XE).
+  // Boutons de page d'encodeur, juste au-dessus des encodeurs (comme sur
+  // une vraie Ion/Ion XE).
   monterCategories(console_);
 
   // Haut : 4 encoders + 1 level wheel
@@ -400,11 +393,9 @@ async function demarrer() {
       classe: "fader",
       surValeur: (v) => { invoke("eos_fader_submaster", { n: i, valeur: v }).catch(() => {}); },
       avecBump: { surPress: (p) => { invoke("eos_fader_bump", { n: i, press: p }).catch(() => {}); } },
-      avecActionsSub: {
+      avecSelect: {
         numeroSub: i,
-        surGroup: () => { invoke("eos_sub_group", { n: i }).catch(() => {}); },
-        surAssert: () => { invoke("eos_sub_assert", { n: i }).catch(() => {}); },
-        surLoad: () => { invoke("eos_sub_load", { n: i }).catch(() => {}); },
+        surSelect: () => { invoke("eos_sub_select", { n: i }).catch(() => {}); },
       },
     });
   }

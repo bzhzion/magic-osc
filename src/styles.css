@@ -184,15 +184,12 @@ html, body { margin: 0; padding: 0; height: 100%; background: var(--fond); color
   font-size: 9px; color: var(--texte-muet); text-align: center;
   max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.fader .actions-sub {
-  display: flex; flex-direction: column; gap: 3px; width: 100%;
-}
-.fader .actions-sub button {
-  width: 100%; height: 20px;
+.fader .select-carre {
+  width: 24px; height: 24px;
   background: var(--fond-2); border: 1px solid var(--bord); color: var(--texte-muet);
-  border-radius: 4px; font-size: 8px; cursor: pointer; touch-action: manipulation;
+  border-radius: 3px; cursor: pointer; touch-action: manipulation;
 }
-.fader .actions-sub button:active {
+.fader .select-carre:active, .fader .select-carre.actif {
   background: var(--accent-stop); color: white; border-color: var(--accent-stop);
 }
 
