@@ -10,19 +10,77 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
 // Diffuse par le backend (osc.rs) a chaque feedback /eos/out/active/wheel/N
-// recu depuis la console : l'encodeur N affiche desormais le VRAI parametre
-// que la console lui a assigne a l'instant, pas un choix fait a la main.
+// recu depuis la console. IMPORTANT : Eos n'expose PAS "ce qui est sur les 4
+// encodeurs physiques a l'instant T" -- /eos/active/wheel/<index> est la
+// liste COMPLETE et FIXE des parametres actifs du projecteur selectionne
+// (jusqu'a 40+ pour un robot complexe), dans l'ordre du patch, et ne se
+// reordonne JAMAIS quand on change de categorie CIA (confirme par capture :
+// wheel/1-4 restent toujours identiques quel que soit le bouton presse).
+// magic-osc doit donc reconstituer lui-meme la pagination par categorie, en
+// filtrant cette liste complete par mot-cle de nom de parametre -- voir
+// `recalculerPageEncodeurs` plus bas.
 interface FeedbackEncodeur {
-  index: number;      // 1..4
-  libelle: string;    // vide = encodeur inassigne actuellement
+  index: number;      // index OSC reel (1..40+), PAS le numero d'encodeur physique
+  libelle: string;    // vide = parametre inexistant a cet index pour ce patch
   valeur: number | null;
 }
 
+// Tous les index OSC reels recus pour le projecteur actuellement selectionne.
+const tousLesWheels = new Map<number, FeedbackEncodeur>();
+// Callback d'affichage par EMPLACEMENT physique (1..4), pas par index OSC reel.
 const feedbackEncodeurs = new Map<number, (f: FeedbackEncodeur) => void>();
+// emplacement physique i (0-based) -> index OSC reel actuellement affiche/pilote.
+// -1 = aucun parametre de la categorie choisie a cet emplacement.
+const assignationEncodeurs: number[] = [1, 2, 3, 4];
+// Categorie choisie par le dernier bouton presse (voir monterCategories), ou
+// null tant qu'aucun bouton n'a ete presse (affiche alors les 4 premiers
+// parametres du patch, comportement par defaut).
+let categorieActive: string | null = null;
+
+// Mots-cles (sous-chaine, insensible a la casse) identifiant les noms de
+// parametre ETC habituels de chaque categorie CIA. Heuristique necessaire
+// car Eos n'envoie aucune metadonnee de categorie par parametre -- peut
+// manquer un parametre au nom atypique selon le fabricant du projecteur.
+const MOTS_CLES_CATEGORIE: Record<string, string[]> = {
+  intensity: ["intens"],
+  focus: ["pan", "tilt", "focus", "position"],
+  color: ["red", "green", "blue", "hue", "saturation", "color", "tint", "cri"],
+  image: ["gobo", "animation", "effect"],
+  shutter: ["iris", "edge", "zoom", "shutter", "strobe", "pwm", "beam", "diffusion"],
+  form: ["frame"],
+};
+
+// Recalcule, pour les 4 emplacements physiques, quel index OSC reel afficher
+// et piloter : soit les 4 premiers parametres (categorie par defaut), soit
+// les parametres de la categorie choisie (filtrage par mot-cle).
+function recalculerPageEncodeurs() {
+  let indices: number[];
+  if (categorieActive === null) {
+    indices = [1, 2, 3, 4];
+  } else {
+    const mots = MOTS_CLES_CATEGORIE[categorieActive] ?? [];
+    indices = Array.from(tousLesWheels.entries())
+      .filter(([, f]) => {
+        const nom = f.libelle.split("  [")[0].trim().toLowerCase();
+        return nom.length > 0 && mots.some((m) => nom.includes(m));
+      })
+      .sort((a, b) => a[0] - b[0])
+      .map(([idx]) => idx)
+      .slice(0, 4);
+  }
+  for (let emplacement = 0; emplacement < 4; emplacement++) {
+    const idx = indices[emplacement];
+    assignationEncodeurs[emplacement] = idx ?? -1;
+    const cb = feedbackEncodeurs.get(emplacement + 1);
+    if (!cb) continue;
+    const f = idx !== undefined ? tousLesWheels.get(idx) : undefined;
+    cb(f ?? { index: -1, libelle: "", valeur: null });
+  }
+}
 
 listen<FeedbackEncodeur>("eos-wheel-feedback", (event) => {
-  const cb = feedbackEncodeurs.get(event.payload.index);
-  if (cb) cb(event.payload);
+  tousLesWheels.set(event.payload.index, event.payload);
+  recalculerPageEncodeurs();
 });
 
 // Reponse a eos_sub_demander_nom : diffuse par le backend quand Eos repond
@@ -161,7 +219,10 @@ function monterEncoder(parent: HTMLElement, index: number) {
     angle += dy;
     dial.style.transform = `rotate(${angle}deg)`;
     const delta = dy / 20;
-    invoke("eos_wheel_switch", { n: index, delta }).catch(() => {});
+    // L'index OSC reel pilote par cet emplacement physique peut changer a
+    // tout moment (categorie choisie), on le relit a chaque mouvement.
+    const reel = assignationEncodeurs[index - 1];
+    if (reel > 0) invoke("eos_wheel_switch", { n: reel, delta }).catch(() => {});
   };
   const fin = () => { actif = false; dial.classList.remove("actif"); };
 
@@ -311,30 +372,43 @@ function monterFader(opts: {
 }
 
 // ── Boutons de page d'encodeur (Intens, Focus, Color, Shutter, Image, Form) ──
-// Boutons physiques d'une Ion/Ion XE qui CHANGENT quels parametres sont
-// assignes aux 4 encodeurs au-dessus (pas un filtre d'affichage). Noms OSC
-// confirmes dans le document officiel "Eos OSC Keys" : prefixe
-// encoder_category_<nom>.
-const CATEGORIES_EOS: { nom: string; libelle: string }[] = [
-  { nom: "encoder_category_intensity", libelle: "Intens" },
-  { nom: "encoder_category_focus", libelle: "Focus" },
-  { nom: "encoder_category_color", libelle: "Color" },
-  { nom: "encoder_category_shutter", libelle: "Shutter" },
-  { nom: "encoder_category_image", libelle: "Image" },
-  { nom: "encoder_category_form", libelle: "Form" },
+// Boutons physiques d'une Ion/Ion XE : changent la categorie CIA affichee sur
+// la console reelle (confirme par Julien, voir recalculerPageEncodeurs plus
+// haut pour le cote magic-osc). Noms OSC confirmes dans "Eos OSC Keys" :
+// prefixe encoder_category_<nom>. `categorie` sert UNIQUEMENT cote magic-osc
+// a filtrer la liste complete des parametres actifs (MOTS_CLES_CATEGORIE).
+const CATEGORIES_EOS: { nom: string; libelle: string; categorie: string }[] = [
+  { nom: "encoder_category_intensity", libelle: "Intens", categorie: "intensity" },
+  { nom: "encoder_category_focus", libelle: "Focus", categorie: "focus" },
+  { nom: "encoder_category_color", libelle: "Color", categorie: "color" },
+  { nom: "encoder_category_shutter", libelle: "Shutter", categorie: "shutter" },
+  { nom: "encoder_category_image", libelle: "Image", categorie: "image" },
+  { nom: "encoder_category_form", libelle: "Form", categorie: "form" },
 ];
 
 function monterCategories(parent: HTMLElement) {
   const bloc = document.createElement("div");
   bloc.className = "categories";
   parent.appendChild(bloc);
+  const boutons: HTMLButtonElement[] = [];
   for (const cat of CATEGORIES_EOS) {
     const b = document.createElement("button");
     b.className = "categorie";
     b.textContent = cat.libelle;
     bloc.appendChild(b);
-    const press = () => { b.classList.add("actif"); invoke("eos_key", { name: cat.nom, press: true }).catch(() => {}); };
-    const release = () => { b.classList.remove("actif"); invoke("eos_key", { name: cat.nom, press: false }).catch(() => {}); };
+    boutons.push(b);
+    const press = () => {
+      invoke("eos_key", { name: cat.nom, press: true }).catch(() => {});
+    };
+    const release = () => {
+      invoke("eos_key", { name: cat.nom, press: false }).catch(() => {});
+      // Selection "latchee" cote magic-osc (reste allumee jusqu'au prochain
+      // bouton) : pilote la pagination des 4 encodeurs.
+      boutons.forEach((autre) => autre.classList.remove("actif"));
+      b.classList.add("actif");
+      categorieActive = cat.categorie;
+      recalculerPageEncodeurs();
+    };
     b.addEventListener("pointerdown", (e) => { e.preventDefault(); press(); });
     b.addEventListener("pointerup", release);
     b.addEventListener("pointerleave", release);

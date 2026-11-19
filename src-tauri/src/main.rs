@@ -129,14 +129,18 @@ fn eos_key_stop(press: bool) -> Result<(), String> {
     osc::envoyer(consoles::etc_eos::KEY_STOP, vec![OscType::Int(v)])
 }
 
-/// Fait tourner l'encodeur physique N (1..=4), quel que soit le parametre
-/// que la console lui a actuellement assigne. Adresse par INDEX
+/// Fait tourner le parametre actif N. Adresse par INDEX
 /// (`/eos/active/wheel/<N>`), jamais par nom de parametre : c'est Eos qui
-/// route en interne. Voir le commentaire de `ACTIVE_WHEEL_PREFIXE`.
+/// route en interne. N n'est PAS limite a 1..=4 : l'index reel dans la
+/// liste complete des parametres actifs du projecteur selectionne peut
+/// depasser 4 une fois la pagination par categorie geree cote frontend
+/// (voir `recalculerPageEncodeurs` dans main.ts -- Eos n'expose aucun moyen
+/// de savoir "quel parametre est sur quel encodeur physique a l'instant T",
+/// seulement la liste complete et fixe des parametres actifs).
 #[tauri::command]
-fn eos_wheel_switch(n: u8, delta: f32) -> Result<(), String> {
-    if !(1..=4).contains(&n) {
-        return Err(format!("encodeur hors plage : {n}"));
+fn eos_wheel_switch(n: u16, delta: f32) -> Result<(), String> {
+    if n < 1 {
+        return Err(format!("index de parametre hors plage : {n}"));
     }
     let adresse = format!("{}{n}", consoles::etc_eos::ACTIVE_WHEEL_PREFIXE);
     osc::envoyer(&adresse, vec![OscType::Float(delta)])

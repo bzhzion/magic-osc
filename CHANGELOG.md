@@ -8,11 +8,18 @@ est renommée en numéro de version au moment de poser le tag.
 
 ## [Unreleased]
 
-### Diagnostic (console ETC Eos)
-- Log sur `wheel/1` à `wheel/4` pour vérifier si Eos réordonne la liste des paramètres
-  actifs à la pression d'un bouton de catégorie (Intens/Focus/Color/.../Form), ou si les
-  4 premiers restent toujours les mêmes quelle que soit la catégorie affichée sur l'écran
-  de la console — nécessaire avant de décider si une pagination côté magic-osc est requise.
+### Ajouté (console ETC Eos)
+- **Pagination des 4 encodeurs par catégorie, gérée côté magic-osc** : diagnostic confirmé
+  par capture (`wheel/1` à `wheel/4` restent toujours identiques quelle que soit la
+  catégorie pressée) — `/eos/active/wheel/<index>` est la liste **complète et fixe** des
+  paramètres actifs du projecteur sélectionné (jusqu'à 40+ pour un robot complexe), dans
+  l'ordre du patch, qu'Eos ne réordonne jamais selon la catégorie CIA affichée à l'écran.
+  magic-osc garde désormais tous les index reçus en mémoire et, à la pression d'un bouton
+  de catégorie, filtre cette liste par mot-cle de nom de paramètre (Pan/Tilt/Focus/Position
+  pour Focus, Red/Green/Blue/Hue/... pour Color, etc.) pour afficher et piloter les 4 bons
+  paramètres sur les encodeurs physiques — reproduisant ce que fait la console réelle en
+  interne, puisqu'Eos n'expose cette information par aucun autre moyen OSC. Le bouton de
+  catégorie reste maintenant allumé (sélection « latchée ») jusqu'au suivant.
 
 ### Corrigé (console ETC Eos)
 - **Vraie cause finale des encodeurs et du nom des subs muets** : le projet n'avait jamais
