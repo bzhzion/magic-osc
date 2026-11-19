@@ -8,6 +8,12 @@ est renommée en numéro de version au moment de poser le tag.
 
 ## [Unreleased]
 
+### Diagnostic (console ETC Eos)
+- Log sur `wheel/1` à `wheel/4` pour vérifier si Eos réordonne la liste des paramètres
+  actifs à la pression d'un bouton de catégorie (Intens/Focus/Color/.../Form), ou si les
+  4 premiers restent toujours les mêmes quelle que soit la catégorie affichée sur l'écran
+  de la console — nécessaire avant de décider si une pagination côté magic-osc est requise.
+
 ### Corrigé (console ETC Eos)
 - **Vraie cause finale des encodeurs et du nom des subs muets** : le projet n'avait jamais
   de dossier `src-tauri/capabilities/`, donc la fenêtre tournait avec le jeu de permissions

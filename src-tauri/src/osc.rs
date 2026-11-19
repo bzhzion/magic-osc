@@ -206,6 +206,9 @@ fn traiter_message_entrant(m: &OscMessage, app: &AppHandle) {
             // supposer le Show Control User Guide. La vraie valeur courante
             // est le FLOAT en position 2, pas l'int en position 1.
             let valeur = m.args.get(2).and_then(osc_type_vers_f64);
+            if index <= 4 {
+                eprintln!("[osc] wheel/{index} -> {libelle:?} (diagnostic page CIA)");
+            }
             let evt = FeedbackEncodeur { index, libelle, valeur };
             if let Err(e) = app.emit("eos-wheel-feedback", evt) {
                 eprintln!("[osc] emission eos-wheel-feedback echouee : {e}");
