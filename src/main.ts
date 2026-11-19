@@ -245,10 +245,13 @@ async function demarrer() {
   haut.className = "haut";
   console_.appendChild(haut);
 
-  monterEncoder(haut, 1, "Pan");
-  monterEncoder(haut, 2, "Tilt");
-  monterEncoder(haut, 3, "Zoom");
-  monterEncoder(haut, 4, "Iris");
+  // Encoders contextuels : 1..4 sans libelle predefini. L'attribution
+  // (Pan/Tilt/Intens/Zoom/Edge/Iris...) est decidee par la console selon
+  // la page active, pas par magic-osc.
+  monterEncoder(haut, 1, "E1");
+  monterEncoder(haut, 2, "E2");
+  monterEncoder(haut, 3, "E3");
+  monterEncoder(haut, 4, "E4");
   monterLevelWheel(haut);
 
   // Bas : 20 submasters + Master Playback (A + B + Go + Stop)

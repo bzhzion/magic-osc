@@ -8,6 +8,18 @@ est renommée en numéro de version au moment de poser le tag.
 
 ## [Unreleased]
 
+### Corrigé (console ETC Eos)
+- **Submasters** : les faders n'avaient aucun effet parce qu'on utilisait
+  `/eos/fader/1/N`, qui exige qu'un « OSC Fader Bank » soit configuré côté console
+  (Setup > Show Control > OSC). Remplacé par `/eos/sub/N` qui pilote directement le
+  submaster N sans aucune configuration préalable. Idem pour le bump : `/eos/sub/N/fire`.
+- **STOP/BACK** faisait apparaître « cue1/Stop Back » côté console : l'adresse
+  `/eos/key/stop_back` était invalide. La touche correcte est `/eos/key/stop` tout court.
+- **Encoders** : renommés `E1`-`E4` au lieu de `Pan`/`Tilt`/`Zoom`/`Iris`, et adresse
+  changée pour `/eos/active_wheel/N`. Comme sur la vraie Ion XE, l'attribution
+  (Pan/Tilt/Intens/Zoom/Edge/Iris…) est décidée par la console en fonction de la page
+  active, pas par magic-osc. Approche calquée sur Luminosus Eos Edition.
+
 ### Ajouté
 - **Icônes de l'application** : jeu placeholder (rond rouge spectacle, lettres `mo` blanches)
   aux tailles exigées par Tauri (32×32, 128×128, 128×128@2x, icon.png 512px, icon.ico

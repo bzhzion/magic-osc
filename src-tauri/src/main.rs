@@ -73,19 +73,19 @@ impl ArgumentTypé {
 // garde cette correspondance ici, et un changement de protocole Eos (tres
 // peu probable) ne demande qu'une correction dans ce fichier.
 
-/// Fader submaster N (1..=20), valeur 0.0..=1.0.
+/// Submaster N (1..=20), valeur 0.0..=1.0. Pilote `/eos/sub/<N>`.
 #[tauri::command]
 fn eos_fader_submaster(n: u8, valeur: f32) -> Result<(), String> {
     if !(1..=20).contains(&n) {
         return Err(format!("submaster hors plage : {n}"));
     }
     let v = valeur.clamp(0.0, 1.0);
-    let adresse = format!("{}{n}", consoles::etc_eos::FADER_SUBMASTER_PREFIXE);
+    let adresse = format!("{}{n}", consoles::etc_eos::SUB_PREFIXE);
     osc::envoyer(&adresse, vec![OscType::Float(v)])
 }
 
 /// Bump d'un submaster. Press/release distincts pour permettre a l'UI de
-/// tenir la touche.
+/// tenir la touche. Envoie `/eos/sub/<N>/fire` + int 1 (press) ou 0 (release).
 #[tauri::command]
 fn eos_fader_bump(n: u8, press: bool) -> Result<(), String> {
     if !(1..=20).contains(&n) {
@@ -93,25 +93,24 @@ fn eos_fader_bump(n: u8, press: bool) -> Result<(), String> {
     }
     let adresse = format!(
         "{}{n}{}",
-        consoles::etc_eos::FADER_SUBMASTER_PREFIXE,
-        consoles::etc_eos::FADER_FIRE_SUFFIXE
+        consoles::etc_eos::SUB_PREFIXE,
+        consoles::etc_eos::SUB_FIRE_SUFFIXE
     );
     let v = if press { 1 } else { 0 };
     osc::envoyer(&adresse, vec![OscType::Int(v)])
 }
 
-/// Master Playback A/B : fader. Idem submaster mais bank 2 en cas d'Alternate.
+/// Master Playback A/B : fader. Demande que le Fader Bank 1 soit configure
+/// « Master Playback » cote console pour avoir un effet.
 #[tauri::command]
 fn eos_fader_master(bank: u8, valeur: f32) -> Result<(), String> {
-    if !(1..=2).contains(&bank) {
-        return Err(format!("master bank hors plage : {bank}"));
-    }
     let v = valeur.clamp(0.0, 1.0);
-    // Bank 1/5 Master Playback = /eos/fader/1/21 sur Ion XE classique ;
-    // on utilise la convention « fader bank 10 » pour le Master Playback
-    // qui est l'adresse documentee par ETC pour un fader dedie.
-    let adresse = format!("/eos/fader/10/{bank}");
-    osc::envoyer(&adresse, vec![OscType::Float(v)])
+    let adresse = match bank {
+        1 => consoles::etc_eos::MASTER_FADER_1,
+        2 => consoles::etc_eos::MASTER_FADER_2,
+        _ => return Err(format!("master bank hors plage : {bank}")),
+    };
+    osc::envoyer(adresse, vec![OscType::Float(v)])
 }
 
 /// GO du Master Playback. Press/release.
@@ -125,20 +124,19 @@ fn eos_key_go(press: bool) -> Result<(), String> {
 #[tauri::command]
 fn eos_key_stop(press: bool) -> Result<(), String> {
     let v = if press { 1 } else { 0 };
-    osc::envoyer(consoles::etc_eos::KEY_STOP_BACK, vec![OscType::Int(v)])
+    osc::envoyer(consoles::etc_eos::KEY_STOP, vec![OscType::Int(v)])
 }
 
-/// Un des quatre encoders (1..=4), delta signe.
+/// Un des 4 encoders contextuels (1..=4), delta signe. Envoie sur
+/// `/eos/active_wheel/<N>` ; la console decide quel parametre y est
+/// attribue a l'instant (Pan, Tilt, Intens... selon la page active).
 #[tauri::command]
 fn eos_wheel_encoder(n: u8, delta: f32) -> Result<(), String> {
-    let adresse = match n {
-        1 => consoles::etc_eos::WHEEL_1,
-        2 => consoles::etc_eos::WHEEL_2,
-        3 => consoles::etc_eos::WHEEL_3,
-        4 => consoles::etc_eos::WHEEL_4,
-        _ => return Err(format!("encoder hors plage : {n}")),
-    };
-    osc::envoyer(adresse, vec![OscType::Float(delta)])
+    if !(1..=4).contains(&n) {
+        return Err(format!("encoder hors plage : {n}"));
+    }
+    let adresse = format!("{}{n}", consoles::etc_eos::ACTIVE_WHEEL_PREFIXE);
+    osc::envoyer(&adresse, vec![OscType::Float(delta)])
 }
 
 /// Level Wheel : modifie l'intensite du selected channel.
