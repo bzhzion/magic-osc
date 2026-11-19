@@ -22,10 +22,12 @@ est renommée en numéro de version au moment de poser le tag.
   catégorie reste maintenant allumé (sélection « latchée ») jusqu'au suivant.
 
 ### Corrigé (console ETC Eos)
-- **Mot-clé `beam` trop générique dans la pagination par catégorie** : capturait aussi bien
-  `Beam MSpeed` (Shutter, correct) que `Beam Fx Index/Speed` et `Beam Fx Select` (qui
-  appartiennent en fait à Image, avec Gobo/Animation/Effect). Remplacé par des expressions
-  plus précises (`beam mspeed` pour Shutter, `beam fx` pour Image) pour lever l'ambiguïté.
+- **Répartition des mots-clés de pagination par catégorie refaite d'après la doc officielle
+  ETC** (support.etcconnect.com — classe d'attribut « Beam » divisée en 3 sous-catégories) :
+  Shutter = dispositifs de **cadrage** (`Frame Angle/Thrust A-D`, pas Iris/Edge/Zoom comme le
+  supposait la version précédente) ; Form = **qualité/taille** du faisceau (edge, zoom, iris,
+  frost) ; Image = tout ce qui **tombe dans le faisceau** (gobos, effets, prismes). L'ancien
+  mot-clé générique `beam` avait aussi classé à tort `Beam Fx Index/Speed` (Image) dans Shutter.
 - **Vraie cause finale des encodeurs et du nom des subs muets** : le projet n'avait jamais
   de dossier `src-tauri/capabilities/`, donc la fenêtre tournait avec le jeu de permissions
   Tauri par défaut, qui n'inclut PAS `core:event:allow-listen`. Chaque appel JS `listen(...)`

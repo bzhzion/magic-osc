@@ -41,15 +41,18 @@ let categorieActive: string | null = null;
 // parametre ETC habituels de chaque categorie CIA. Heuristique necessaire
 // car Eos n'envoie aucune metadonnee de categorie par parametre -- peut
 // manquer un parametre au nom atypique selon le fabricant du projecteur.
+// Repartition confirmee par la doc officielle ETC (support.etcconnect.com,
+// classe d'attribut "Beam" divisee en 3 sous-categories) :
+// - Shutter = dispositifs de CADRAGE (framing) : Frame Angle/Thrust A-D.
+// - Form = qualite/taille du faisceau : edge, zoom, iris, frost.
+// - Image = tout ce qui "tombe dans le faisceau" : gobos, effets, prismes.
 const MOTS_CLES_CATEGORIE: Record<string, string[]> = {
   intensity: ["intens"],
   focus: ["pan", "tilt", "focus", "position"],
   color: ["red", "green", "blue", "hue", "saturation", "color", "tint", "cri"],
-  // "beam fx" (gobo/animation lies) appartient a Image, PAS a Shutter malgre
-  // le mot "beam" -- cf. "Beam MSpeed" ci-dessous, lui bien dans Shutter.
-  image: ["gobo", "animation", "effect", "beam fx"],
-  shutter: ["iris", "edge", "zoom", "shutter", "strobe", "pwm", "beam mspeed", "diffusion"],
-  form: ["frame"],
+  form: ["edge", "zoom", "iris", "frost", "diffusion"],
+  image: ["gobo", "animation", "effect", "prism", "beam fx"],
+  shutter: ["frame", "shutter strobe"],
 };
 
 // Recalcule, pour les 4 emplacements physiques, quel index OSC reel afficher
