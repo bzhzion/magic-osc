@@ -127,15 +127,21 @@ fn eos_key_stop(press: bool) -> Result<(), String> {
     osc::envoyer(consoles::etc_eos::KEY_STOP, vec![OscType::Int(v)])
 }
 
-/// Un des 4 encoders contextuels (1..=4), delta signe. Envoie sur
-/// `/eos/active_wheel/<N>` ; la console decide quel parametre y est
-/// attribue a l'instant (Pan, Tilt, Intens... selon la page active).
+/// Envoie un delta sur un parametre Eos nomme (pan, tilt, intens, zoom...).
+/// L'API ETC Eos n'expose pas les encoders par index : chaque encoder de
+/// magic-osc doit choisir quel parametre il pilote. Adresse composee :
+/// `/eos/active/wheel/coarse/<param>`.
 #[tauri::command]
-fn eos_wheel_encoder(n: u8, delta: f32) -> Result<(), String> {
-    if !(1..=4).contains(&n) {
-        return Err(format!("encoder hors plage : {n}"));
+fn eos_wheel_encoder(param: String, delta: f32) -> Result<(), String> {
+    let p = param.trim();
+    if p.is_empty() {
+        return Err("parametre vide".to_string());
     }
-    let adresse = format!("{}{n}", consoles::etc_eos::ACTIVE_WHEEL_PREFIXE);
+    // Les noms sont alphanumeriques sans espaces dans l'API Eos.
+    if !p.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err(format!("nom de parametre invalide : {p}"));
+    }
+    let adresse = format!("{}{p}", consoles::etc_eos::WHEEL_ACTIVE_COARSE_PREFIXE);
     osc::envoyer(&adresse, vec![OscType::Float(delta)])
 }
 

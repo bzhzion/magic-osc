@@ -48,15 +48,14 @@ pub mod etc_eos {
     pub const KEY_GO: &str = "/eos/key/go_0";
     pub const KEY_STOP: &str = "/eos/key/stop";
 
-    // ── Encoders contextuels (4 boutons rotatifs au-dessus de l'ecran) ─────
-    // L'Ion XE reattribue les 4 encoders selon la categorie active sur la
-    // console (Form, Image, Color, Shutter...). L'API OSC expose les 4
-    // encoders par leur INDEX physique, pas par leur fonction : la console
-    // decide elle-meme quel parametre est attribue a l'encoder 1, 2, 3 ou 4
-    // selon ce que l'utilisateur regarde. On envoie donc un delta sur
-    // `/eos/active_wheel/<N>` ; l'utilisateur de magic-osc voit juste
-    // « E1 E2 E3 E4 » et l'attribution courante est celle de la console.
-    pub const ACTIVE_WHEEL_PREFIXE: &str = "/eos/active_wheel/";
+    // ── Encoders (4 boutons rotatifs au-dessus de l'ecran) ─────────────────
+    // L'API OSC ETC Eos n'expose PAS les encoders physiques par index : elle
+    // adresse des parametres NOMMES (pan, tilt, intens, zoom, iris...). La
+    // commande partante est `/eos/active/wheel/coarse/<param>` avec un delta
+    // flottant. L'utilisateur de magic-osc choisit pour chaque encoder quel
+    // parametre il controle (meme approche que Luminosus Eos Edition dans
+    // `EosEncoderBlock.cpp`).
+    pub const WHEEL_ACTIVE_COARSE_PREFIXE: &str = "/eos/active/wheel/coarse/";
 
     // ── Level Wheel ────────────────────────────────────────────────────────
     // La grosse molette d'intensite. Delta float.

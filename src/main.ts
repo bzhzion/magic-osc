@@ -57,14 +57,57 @@ function monterBarre(racine: HTMLElement) {
   });
 }
 
-// ── Encoder rotatif (dial drag vertical pour changer de valeur) ─────────
-function monterEncoder(parent: HTMLElement, numero: number, nom: string) {
+// ── Encoder rotatif + menu du parametre pilote ────────────────────────
+// ETC Eos n'expose pas les 4 encoders physiques par index : on doit dire
+// quel parametre (pan, tilt, intens, zoom...) on veut pousser. L'utilisateur
+// choisit pour chaque encoder ; on sauvegarde le choix dans localStorage.
+const PARAMETRES_EOS = [
+  { val: "", libelle: "(aucun)" },
+  { val: "intens", libelle: "Intens" },
+  { val: "pan", libelle: "Pan" },
+  { val: "tilt", libelle: "Tilt" },
+  { val: "zoom", libelle: "Zoom" },
+  { val: "iris", libelle: "Iris" },
+  { val: "edge", libelle: "Edge" },
+  { val: "shutter", libelle: "Shutter" },
+  { val: "red", libelle: "Red" },
+  { val: "green", libelle: "Green" },
+  { val: "blue", libelle: "Blue" },
+  { val: "amber", libelle: "Amber" },
+  { val: "white", libelle: "White" },
+  { val: "cto", libelle: "CTO" },
+  { val: "cts", libelle: "CTS" },
+  { val: "hue", libelle: "Hue" },
+  { val: "saturation", libelle: "Saturation" },
+  { val: "gobo_select", libelle: "Gobo Select" },
+  { val: "rot1", libelle: "Rot 1" },
+  { val: "rot2", libelle: "Rot 2" },
+];
+
+function monterEncoder(parent: HTMLElement, index: number) {
   const bloc = document.createElement("div");
   bloc.className = "encoder";
-  bloc.innerHTML = `<div class="nom">${nom}</div><div class="dial"></div>`;
+  bloc.innerHTML = `
+    <div class="nom">E${index}</div>
+    <div class="dial"></div>
+    <select></select>
+  `;
   parent.appendChild(bloc);
 
   const dial = bloc.querySelector<HTMLDivElement>(".dial")!;
+  const menu = bloc.querySelector<HTMLSelectElement>("select")!;
+
+  PARAMETRES_EOS.forEach(p => {
+    const o = document.createElement("option");
+    o.value = p.val; o.textContent = p.libelle;
+    menu.appendChild(o);
+  });
+
+  const cleSauvegarde = `magic-osc.encoder.${index}`;
+  const sauv = localStorage.getItem(cleSauvegarde);
+  if (sauv !== null) menu.value = sauv;
+  menu.addEventListener("change", () => localStorage.setItem(cleSauvegarde, menu.value));
+
   let actif = false;
   let dernier = 0;
   let angle = 0;
@@ -80,13 +123,12 @@ function monterEncoder(parent: HTMLElement, numero: number, nom: string) {
     if (!actif) return;
     const dy = dernier - ev.clientY;
     dernier = ev.clientY;
-    // 1 pixel = 1 degre de rotation visuel ; cote OSC on envoie un delta
-    // proportionnel (pas = pixel / 20). Donne une sensation de granularite
-    // confortable pour un intens/pan/tilt.
     angle += dy;
     dial.style.transform = `rotate(${angle}deg)`;
+    const param = menu.value;
+    if (!param) return;   // encoder non assigne : rien a envoyer
     const delta = dy / 20;
-    invoke("eos_wheel_encoder", { n: numero, delta }).catch(() => {});
+    invoke("eos_wheel_encoder", { param, delta }).catch(() => {});
   };
   const fin = () => { actif = false; dial.classList.remove("actif"); };
 
@@ -245,13 +287,12 @@ async function demarrer() {
   haut.className = "haut";
   console_.appendChild(haut);
 
-  // Encoders contextuels : 1..4 sans libelle predefini. L'attribution
-  // (Pan/Tilt/Intens/Zoom/Edge/Iris...) est decidee par la console selon
-  // la page active, pas par magic-osc.
-  monterEncoder(haut, 1, "E1");
-  monterEncoder(haut, 2, "E2");
-  monterEncoder(haut, 3, "E3");
-  monterEncoder(haut, 4, "E4");
+  // Encoders : chacun choisit son parametre Eos via un menu, voir
+  // monterEncoder plus haut. Pas d'assignation par defaut.
+  monterEncoder(haut, 1);
+  monterEncoder(haut, 2);
+  monterEncoder(haut, 3);
+  monterEncoder(haut, 4);
   monterLevelWheel(haut);
 
   // Bas : 20 submasters + Master Playback (A + B + Go + Stop)

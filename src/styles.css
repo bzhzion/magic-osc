@@ -78,6 +78,12 @@ html, body { margin: 0; padding: 0; height: 100%; background: var(--fond); color
   border-radius: 2px;
 }
 .encoder .dial.actif { cursor: grabbing; }
+.encoder select {
+  width: 100%;
+  background: var(--encore); border: 1px solid var(--bord); color: var(--texte);
+  padding: 4px 6px; border-radius: 4px; font: inherit; font-size: 11px;
+}
+.encoder select option { background: var(--fond-2); color: var(--texte); }
 
 .wheel {
   display: flex; flex-direction: column; align-items: center; gap: 6px;

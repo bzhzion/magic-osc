@@ -15,10 +15,14 @@ est renommée en numéro de version au moment de poser le tag.
   submaster N sans aucune configuration préalable. Idem pour le bump : `/eos/sub/N/fire`.
 - **STOP/BACK** faisait apparaître « cue1/Stop Back » côté console : l'adresse
   `/eos/key/stop_back` était invalide. La touche correcte est `/eos/key/stop` tout court.
-- **Encoders** : renommés `E1`-`E4` au lieu de `Pan`/`Tilt`/`Zoom`/`Iris`, et adresse
-  changée pour `/eos/active_wheel/N`. Comme sur la vraie Ion XE, l'attribution
-  (Pan/Tilt/Intens/Zoom/Edge/Iris…) est décidée par la console en fonction de la page
-  active, pas par magic-osc. Approche calquée sur Luminosus Eos Edition.
+- **Encoders** : `/eos/active_wheel/N` (index numérique) n'existe pas dans l'API OSC Eos —
+  testé sur Mac, sans effet. L'API Eos adresse des paramètres **nommés**
+  (`/eos/active/wheel/coarse/<param>`, ex. `pan`, `tilt`, `intens`, `zoom`), jamais un
+  index d'encodeur physique. Chaque encodeur `E1`-`E4` a maintenant son propre menu
+  déroulant pour choisir le paramètre qu'il pilote (Intens, Pan, Tilt, Zoom, Iris, Edge,
+  Shutter, couleurs RGBAW, CTO/CTS, Hue/Saturation, Gobo Select, Rot 1/2), persisté en
+  local. Sans sélection, l'encodeur n'envoie rien. Approche calquée sur Luminosus Eos
+  Edition (`EosEncoderBlock.cpp`).
 
 ### Ajouté
 - **Icônes de l'application** : jeu placeholder (rond rouge spectacle, lettres `mo` blanches)
