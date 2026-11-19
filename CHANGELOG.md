@@ -8,6 +8,12 @@ est renommée en numéro de version au moment de poser le tag.
 
 ## [Unreleased]
 
+### Diagnostic (console ETC Eos)
+- Logs sur la réception du feedback OSC (adresse + arguments de chaque message reçu,
+  erreurs de décodage, arrêt du thread d'écoute) pour comprendre pourquoi encodeurs et
+  nom des subs restent muets alors que le réseau confirme (tcpdump) que les paquets Eos
+  arrivent sur le port d'écoute.
+
 ### Ajouté (console ETC Eos)
 - **6 boutons de page d'encodeur** au-dessus des encodeurs : Intens, Focus, Color,
   Shutter, Image, Form. Ce sont les boutons qui CHANGENT quels paramètres sont assignés

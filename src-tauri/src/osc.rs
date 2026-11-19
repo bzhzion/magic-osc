@@ -141,9 +141,12 @@ fn demarrer_ecoute_feedback(socket: UdpSocket, generation: u64, app: AppHandle) 
                 break;
             }
             match socket.recv_from(&mut tampon) {
-                Ok((taille, _)) => {
-                    if let Ok((_, paquet)) = rosc::decoder::decode_udp(&tampon[..taille]) {
-                        traiter_paquet_entrant(&paquet, &app);
+                Ok((taille, expediteur)) => {
+                    match rosc::decoder::decode_udp(&tampon[..taille]) {
+                        Ok((_, paquet)) => traiter_paquet_entrant(&paquet, &app),
+                        Err(e) => eprintln!(
+                            "[osc] paquet recu de {expediteur} ({taille} octets) illisible : {e:?}"
+                        ),
                     }
                 }
                 Err(e)
@@ -152,7 +155,10 @@ fn demarrer_ecoute_feedback(socket: UdpSocket, generation: u64, app: AppHandle) 
                 {
                     continue;
                 }
-                Err(_) => break,
+                Err(e) => {
+                    eprintln!("[osc] ecoute du feedback arretee : {e}");
+                    break;
+                }
             }
         }
     });
@@ -180,11 +186,11 @@ fn osc_type_vers_f64(v: &OscType) -> Option<f64> {
 }
 
 fn traiter_message_entrant(m: &OscMessage, app: &AppHandle) {
+    eprintln!("[osc] recu {} args={:?}", m.addr, m.args);
     let segments: Vec<&str> = m.addr.split('/').filter(|s| !s.is_empty()).collect();
 
-    // /eos/out/active/wheel/<1..4> : DEUX arguments [nom (string), valeur
-    // (nombre)], format officiel confirme (Eos Family Show Control User
-    // Guide, section "Active Parameters").
+    // /eos/out/active/wheel/<1..4> : 3 arguments reels (string, int, float),
+    // voir le commentaire en tete de fichier.
     if segments.len() == 5
         && segments[0] == "eos"
         && segments[1] == "out"
