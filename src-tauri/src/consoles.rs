@@ -5,12 +5,14 @@
 //! Guide » Rev C, chapitre OSC + Appendix: Advanced OSC. Port UDP par
 //! defaut 8000 cote console.
 //!
-//! Prerequis cote console (Setup > System > Show Control > OSC) :
-//! - « Receive » pour que la console execute nos commandes (GO, faders...).
-//! - « Transmit » pour que la console nous renvoie du feedback (quel
-//!   parametre est assigne a chaque encodeur, nom des subs...). Sans
-//!   Transmit, GO/STOP/faders marchent mais les encodeurs restent vides :
-//!   Eos ne nous dit jamais ce qu'il faudrait y afficher.
+//! Prerequis cote console (Setup > Show > ShowControl) :
+//! - « String RX » pour que la console execute nos commandes (GO, faders...).
+//! - « String TX » + OSC TX IP Address/Port pour que la console nous
+//!   renvoie du feedback (quel parametre est assigne a chaque encodeur,
+//!   nom des subs...). Contrairement a une reponse HTTP, l'UDP TX d'Eos
+//!   part vers une destination FIXE configuree cote console, PAS vers le
+//!   port depuis lequel on a envoye notre derniere requete. Voir le
+//!   commentaire de `osc::PORT_ECOUTE`.
 //!
 //! Les 13+ banques de JustMakeQ seront portees aux etapes suivantes.
 
@@ -67,16 +69,18 @@ pub mod etc_eos {
     //   Output" : `/eos/out/active/wheel/<1..4>` avec DEUX arguments
     //   separes (string = nom du parametre courant, nombre = valeur
     //   courante). Envoye automatiquement des que la selection ou le
-    //   parametre assigne change -- MAIS UNIQUEMENT SI "Transmit" est
-    //   active cote console (Setup > System > Show Control > OSC).
-    //   Label vide = encodeur actuellement inassigne.
+    //   parametre assigne change. Label vide = encodeur actuellement
+    //   inassigne.
     //
-    // - EN ENTREE (commande, magic-osc -> Eos), section "Switch" :
-    //   `/eos/active/switch/<1..4>` avec un delta flottant. Eos route en
-    //   interne vers le parametre actuellement affecte a cet index : on
-    //   adresse par index physique (1-based), jamais par nom.
+    // - EN ENTREE (commande, magic-osc -> Eos), section "Wheel" (PAS
+    //   "Switch" : Switch est une methode distincte pour des parametres a
+    //   bascule, pas pour les encodeurs rotatifs continus -- erreur de la
+    //   version precedente) : `/eos/active/wheel/<1..4>` avec un delta
+    //   flottant. Eos route en interne vers le parametre actuellement
+    //   affecte a cet index : on adresse par index physique (1-based),
+    //   jamais par nom.
     pub const OUT_ACTIVE_WHEEL_PREFIXE: &str = "/eos/out/active/wheel/";
-    pub const ACTIVE_SWITCH_PREFIXE: &str = "/eos/active/switch/";
+    pub const ACTIVE_WHEEL_PREFIXE: &str = "/eos/active/wheel/";
 
     // ── Level Wheel ────────────────────────────────────────────────────────
     pub const WHEEL_LEVEL: &str = "/eos/wheel/level";

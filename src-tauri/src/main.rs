@@ -131,14 +131,14 @@ fn eos_key_stop(press: bool) -> Result<(), String> {
 
 /// Fait tourner l'encodeur physique N (1..=4), quel que soit le parametre
 /// que la console lui a actuellement assigne. Adresse par INDEX
-/// (`/eos/active/switch/<N>`), jamais par nom de parametre : c'est Eos qui
-/// route en interne. Voir le commentaire de `ACTIVE_SWITCH_PREFIXE`.
+/// (`/eos/active/wheel/<N>`), jamais par nom de parametre : c'est Eos qui
+/// route en interne. Voir le commentaire de `ACTIVE_WHEEL_PREFIXE`.
 #[tauri::command]
 fn eos_wheel_switch(n: u8, delta: f32) -> Result<(), String> {
     if !(1..=4).contains(&n) {
         return Err(format!("encodeur hors plage : {n}"));
     }
-    let adresse = format!("{}{n}", consoles::etc_eos::ACTIVE_SWITCH_PREFIXE);
+    let adresse = format!("{}{n}", consoles::etc_eos::ACTIVE_WHEEL_PREFIXE);
     osc::envoyer(&adresse, vec![OscType::Float(delta)])
 }
 
@@ -184,6 +184,7 @@ fn eos_sub_demander_nom(n: u8) -> Result<(), String> {
 struct InfoDestination {
     hote: Option<String>,
     port: Option<u16>,
+    port_ecoute: u16,
 }
 
 #[tauri::command]
@@ -193,6 +194,7 @@ fn info_destination_osc() -> InfoDestination {
     InfoDestination {
         hote: None,
         port: None,
+        port_ecoute: osc::PORT_ECOUTE,
     }
 }
 

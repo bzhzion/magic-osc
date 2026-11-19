@@ -51,6 +51,7 @@ function monterBarre(racine: HTMLElement) {
     <label for="port">port</label>
     <input id="port" type="number" value="8000" style="width: 72px;" />
     <button id="connecter">Connecter</button>
+    <span id="port-ecoute" class="statut"></span>
     <span id="statut" class="statut">Non connecte</span>
   `;
   racine.appendChild(barre);
@@ -59,6 +60,15 @@ function monterBarre(racine: HTMLElement) {
   const port = barre.querySelector<HTMLInputElement>("#port")!;
   const bouton = barre.querySelector<HTMLButtonElement>("#connecter")!;
   const statut = barre.querySelector<HTMLSpanElement>("#statut")!;
+  const portEcouteAff = barre.querySelector<HTMLSpanElement>("#port-ecoute")!;
+
+  // Le feedback Eos (encodeurs, nom des subs) part vers un port FIXE
+  // configure cote console (OSC TX Port Number), pas vers notre port
+  // d'envoi : on affiche ce port pour que l'operateur le recopie dans
+  // Setup > Show > ShowControl sur la console.
+  invoke<{ port_ecoute: number }>("info_destination_osc").then((info) => {
+    portEcouteAff.textContent = `Port d'ecoute magic-osc (a mettre en "OSC TX Port Number" cote Eos) : ${info.port_ecoute}`;
+  }).catch(() => {});
 
   // Restaure les dernieres valeurs saisies (persistence legere cote JS).
   const sauvegarde = localStorage.getItem("magic-osc.destination");

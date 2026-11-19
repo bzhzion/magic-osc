@@ -1,15 +1,29 @@
 //! Emission ET reception OSC (UDP).
 //!
-//! `rosc` fait l'encodage/decodage. La socket d'envoi et la socket d'ecoute
-//! du feedback sont la MEME socket : Eos repond au port d'ou vient la
-//! requete (comportement standard d'un serveur OSC UDP), donc ouvrir une
-//! deuxieme socket a part pour ecouter ne recevrait jamais rien.
+//! `rosc` fait l'encodage/decodage.
 //!
-//! Sources (Eos Family Show Control User Guide, Rev C, chapitres "Active
-//! Parameters" et "Implicit OSC Output") :
-//! - Eos n'envoie son feedback QUE si « Transmit » (UDP TX) est coche cote
-//!   console, dans Setup > System > Show Control > OSC. « Receive » seul
-//!   (necessaire pour GO/STOP/faders) ne suffit PAS a recevoir ce feedback.
+//! ⚠️ **La socket d'envoi et la socket d'ecoute du feedback sont DEUX
+//! sockets distinctes, sur des ports differents.** Contrairement a une
+//! reponse HTTP, Eos n'envoie jamais son feedback UDP vers le port depuis
+//! lequel on vient de lui parler : il l'envoie vers une destination FIXE
+//! configuree cote console (Setup > Show > ShowControl > « OSC TX IP
+//! Address » / « OSC TX Port Number »), independamment de nos requetes.
+//! Une premiere version de ce fichier clonait la socket d'envoi en
+//! supposant un comportement "reply-to-sender" : aucun feedback n'arrivait
+//! jamais, meme console bien configuree, parce qu'Eos visait un port que
+//! magic-osc n'ecoutait pas. D'ou `PORT_ECOUTE`, fixe, a renseigner cote
+//! console comme "OSC TX Port Number" (avec l'IP de la machine qui lance
+//! magic-osc comme "OSC TX IP Address").
+//!
+//! Sources (Eos Family Show Control User Guide, Rev C, chapitres
+//! "Configuring OSC", "Active Parameters" et "Implicit OSC Output") :
+//! - « String RX » suffit pour GO/STOP/faders (on envoie, Eos execute).
+//!   « String TX » + OSC TX IP/Port sont necessaires en plus pour tout
+//!   feedback (wheels actifs, nom des subs...), car c'est Eos qui doit
+//!   nous contacter cette fois.
+//! - Ports recommandes par ETC : 8000 (OSC RX, cote console -- c'est le
+//!   port auquel magic-osc envoie) et 8001 (OSC TX, cote console -- c'est
+//!   le port sur lequel magic-osc doit ecouter : `PORT_ECOUTE`).
 //! - `/eos/reset` force Eos a renvoyer IMMEDIATEMENT tout son etat implicite
 //!   courant (wheels actifs, commande en cours...), au lieu d'attendre le
 //!   prochain changement. Envoye juste apres connexion.
@@ -26,6 +40,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
+
+/// Port fixe sur lequel magic-osc ecoute le feedback Eos. A renseigner
+/// cote console comme « OSC TX Port Number » (Setup > Show > ShowControl),
+/// avec l'IP de la machine qui lance magic-osc comme « OSC TX IP Address ».
+pub const PORT_ECOUTE: u16 = 8001;
 
 pub struct Emetteur {
     socket: UdpSocket,
@@ -61,10 +80,12 @@ pub fn regler_destination(hote: &str, port: u16, app: AppHandle) -> Result<(), S
         .next()
         .ok_or_else(|| "aucune adresse resolue".to_string())?;
     let emetteur = Emetteur::nouveau(adresse).map_err(|e| e.to_string())?;
-    let socket_ecoute = emetteur
-        .socket
-        .try_clone()
-        .map_err(|e| format!("impossible de dupliquer la socket : {e}"))?;
+    // Socket DEDIEE a l'ecoute, sur le port fixe que la console doit viser
+    // (voir le commentaire de PORT_ECOUTE en tete de fichier) -- surtout
+    // pas un clone de la socket d'envoi, qui a un port ephemere qu'Eos ne
+    // contactera jamais.
+    let socket_ecoute = UdpSocket::bind(("0.0.0.0", PORT_ECOUTE))
+        .map_err(|e| format!("impossible d'ecouter sur le port {PORT_ECOUTE} : {e}"))?;
 
     let generation = GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
 

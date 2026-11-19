@@ -39,20 +39,26 @@ est renommée en numéro de version au moment de poser le tag.
   sélection de page d'encodeur. Remplacées par les clés `encoder_category_*` ci-dessus.
   Suppression des boutons Group/Assert/Load, qui n'étaient pas les bons boutons
   physiques recherchés — remplacés par le bouton carré de sélection unique.
-- **Encoders, suite et vraie source du problème** : malgré l'adressage par index déjà en place
-  (`/eos/active/switch/<1..4>`, confirmé bon), les encodeurs restaient inertes. Deux causes,
-  confirmées cette fois par le document officiel ETC (« Eos Family Show Control User Guide »
-  Rev C, chapitres « Active Parameters » et « Implicit OSC Output », PDF obtenu via le dépôt
-  `jmcker/OSC-Control---ETC-Eos`, pas une implémentation tierce) :
-  1. Eos n'envoie son feedback (quel paramètre est sur quel encodeur) QUE si **« Transmit »**
-     est coché côté console, dans *Setup > System > Show Control > OSC*. « Receive » seul
-     (qui suffit pour GO/STOP/faders, lesquels fonctionnaient déjà) ne suffit pas : Eos ne
-     parle jamais de lui-même sans Transmit actif. **Si les encodeurs restent vides après
-     cette version, c'est le premier réglage à vérifier côté console.**
-  2. Le format du feedback `/eos/out/active/wheel/<1..4>` est **deux arguments séparés**
-     (chaîne = nom du paramètre, nombre = valeur courante), pas une seule chaîne
-     `"<label>  [<valeur>]"` comme le supposait la version précédente d'après du code tiers
-     non officiel (Luminosus Eos Edition, abandonné). magic-osc envoie maintenant
+- **Encodeurs et nom des subs, vraie cause (architecture réseau)** : malgré plusieurs correctifs
+  précédents, aucun feedback n'arrivait jamais, y compris console bien réglée. Cause réelle,
+  confirmée par le document officiel ETC (« Eos Family Show Control User Guide » Rev C,
+  chapitre « Configuring OSC ») : **Eos n'envoie jamais son feedback UDP vers le port depuis
+  lequel on vient de lui parler** (pas de comportement « reply-to-sender »), il l'envoie vers
+  une destination **fixe** configurée côté console (*Setup > Show > ShowControl* : « OSC TX IP
+  Address » / « OSC TX Port Number »). magic-osc clonait la socket d'envoi en supposant le
+  contraire — il écoutait donc un port qu'Eos ne contactait jamais. Corrigé : magic-osc ouvre
+  maintenant une socket d'écoute dédiée sur un port fixe (**8001**, conforme à la paire
+  8000/8001 recommandée par ETC), affiché dans la barre de connexion pour que l'opérateur le
+  reporte dans Setup > Show > ShowControl comme OSC TX Port Number (avec l'IP de la machine qui
+  lance magic-osc comme OSC TX IP Address).
+- **Encodeurs, mauvaise méthode OSC en entrée** : l'envoi utilisait `/eos/active/switch/<1..4>`,
+  qui est la méthode « Switch » (paramètres à bascule), pas « Wheel » (encodeurs rotatifs
+  continus). Remplacé par `/eos/active/wheel/<1..4>`, qui correspond à la méthode utilisée par
+  les vrais encodeurs physiques d'une Ion/Ion XE et à l'adresse de feedback déjà en place.
+- Le format du feedback `/eos/out/active/wheel/<1..4>` est **deux arguments séparés**
+  (chaîne = nom du paramètre, nombre = valeur courante), pas une seule chaîne
+  `"<label>  [<valeur>]"` comme le supposait la version précédente d'après du code tiers
+  non officiel (Luminosus Eos Edition, abandonné). magic-osc envoie maintenant
      `/eos/reset` juste après connexion (force Eos à republier tout de suite son état
      courant au lieu d'attendre un changement) et lit les deux arguments séparément.
 
