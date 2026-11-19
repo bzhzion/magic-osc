@@ -45,8 +45,10 @@ const MOTS_CLES_CATEGORIE: Record<string, string[]> = {
   intensity: ["intens"],
   focus: ["pan", "tilt", "focus", "position"],
   color: ["red", "green", "blue", "hue", "saturation", "color", "tint", "cri"],
-  image: ["gobo", "animation", "effect"],
-  shutter: ["iris", "edge", "zoom", "shutter", "strobe", "pwm", "beam", "diffusion"],
+  // "beam fx" (gobo/animation lies) appartient a Image, PAS a Shutter malgre
+  // le mot "beam" -- cf. "Beam MSpeed" ci-dessous, lui bien dans Shutter.
+  image: ["gobo", "animation", "effect", "beam fx"],
+  shutter: ["iris", "edge", "zoom", "shutter", "strobe", "pwm", "beam mspeed", "diffusion"],
   form: ["frame"],
 };
 
