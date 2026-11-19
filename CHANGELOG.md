@@ -8,6 +8,23 @@ est renommée en numéro de version au moment de poser le tag.
 
 ## [Unreleased]
 
+### Ajouté (console ETC Eos)
+- **6 boutons de catégorie d'attribut** au-dessus des encodeurs : Intens, Focus, Color,
+  Shutter, Image, Form. Reproduisent le bandeau physique d'une Ion/Ion XE. Adresse
+  `/eos/key/<nom>` avec `<nom>` = `intensity`, `focus`, `color`, `shutter`, `image`, `form`
+  (noms confirmés par le document officiel ETC « Eos OSC Keys »), argument flottant
+  1.0 au press / 0.0 au release.
+- **Boutons Group, Assert, Load** sous chaque submaster, en plus du Bump existant. Il
+  n'existe pas d'adresse OSC dédiée par sub pour ces trois actions : magic-osc reproduit
+  la séquence console (sélectionner le sub avec `/eos/sub` + numéro, puis presser la
+  touche `/eos/key/group`, `/eos/key/assert` ou `/eos/key/load`), exactement comme le
+  ferait un régisseur au clavier.
+- **Nom du submaster affiché sous chaque fader**, demandé à la console via
+  `/eos/get/sub/<N>` à la connexion (requêtes étalées sur 30 ms pour ne pas arroser Eos de
+  20 messages simultanés). La réponse `/eos/out/get/sub/<N>/list/<index>/<count>` est
+  documentée dans l'Appendix « Advanced OSC » du Show Control User Guide — le label est
+  le 3ᵉ argument (index 2) de la liste.
+
 ### Corrigé (console ETC Eos)
 - **Submasters** : les faders n'avaient aucun effet parce qu'on utilisait
   `/eos/fader/1/N`, qui exige qu'un « OSC Fader Bank » soit configuré côté console
@@ -15,17 +32,22 @@ est renommée en numéro de version au moment de poser le tag.
   submaster N sans aucune configuration préalable. Idem pour le bump : `/eos/sub/N/fire`.
 - **STOP/BACK** faisait apparaître « cue1/Stop Back » côté console : l'adresse
   `/eos/key/stop_back` était invalide. La touche correcte est `/eos/key/stop` tout court.
-- **Encoders** : retour utilisateur — « ils doivent se peupler en fonction de ce à quoi ils
-  sont assignés sur Eos en fonction de la sélection », pas d'un choix manuel. Après vérification
-  dans le code source de Luminosus Eos Edition (`EosActiveChannelsManager.cpp`), il y a bien
-  deux adresses dédiées : Eos **envoie** en continu `/eos/out/active/wheel/<1..4>` (chaîne
-  `"<label>  [<valeur>]"`, vide si l'encodeur n'a rien d'assigné) dès que la sélection ou la
-  page change, et **reçoit** sur `/eos/active/switch/<1..4>` pour faire tourner l'encodeur N
-  quel que soit le paramètre qui lui est affecté à l'instant — adressage par index physique,
-  jamais par nom. magic-osc écoute maintenant ce feedback sur la même socket UDP que l'envoi
-  (Eos répond au port d'origine de la requête) et affiche en direct, sous chaque encodeur
-  `E1`-`E4`, le nom exact du paramètre assigné par la console, grisé et inerte tant qu'aucun
-  paramètre n'y est affecté. Le menu déroulant manuel de la version précédente est retiré.
+- **Encoders, suite et vraie source du problème** : malgré l'adressage par index déjà en place
+  (`/eos/active/switch/<1..4>`, confirmé bon), les encodeurs restaient inertes. Deux causes,
+  confirmées cette fois par le document officiel ETC (« Eos Family Show Control User Guide »
+  Rev C, chapitres « Active Parameters » et « Implicit OSC Output », PDF obtenu via le dépôt
+  `jmcker/OSC-Control---ETC-Eos`, pas une implémentation tierce) :
+  1. Eos n'envoie son feedback (quel paramètre est sur quel encodeur) QUE si **« Transmit »**
+     est coché côté console, dans *Setup > System > Show Control > OSC*. « Receive » seul
+     (qui suffit pour GO/STOP/faders, lesquels fonctionnaient déjà) ne suffit pas : Eos ne
+     parle jamais de lui-même sans Transmit actif. **Si les encodeurs restent vides après
+     cette version, c'est le premier réglage à vérifier côté console.**
+  2. Le format du feedback `/eos/out/active/wheel/<1..4>` est **deux arguments séparés**
+     (chaîne = nom du paramètre, nombre = valeur courante), pas une seule chaîne
+     `"<label>  [<valeur>]"` comme le supposait la version précédente d'après du code tiers
+     non officiel (Luminosus Eos Edition, abandonné). magic-osc envoie maintenant
+     `/eos/reset` juste après connexion (force Eos à republier tout de suite son état
+     courant au lieu d'attendre un changement) et lit les deux arguments séparément.
 
 ### Ajouté
 - **Icônes de l'application** : jeu placeholder (rond rouge spectacle, lettres `mo` blanches)

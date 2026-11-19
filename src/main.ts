@@ -25,6 +25,22 @@ listen<FeedbackEncodeur>("eos-wheel-feedback", (event) => {
   if (cb) cb(event.payload);
 });
 
+// Reponse a eos_sub_demander_nom : diffuse par le backend quand Eos repond
+// a /eos/get/sub/<n>. Permet d'afficher sous chaque fader le VRAI nom
+// donne au submaster dans le show, sans que l'utilisateur ait a le
+// ressaisir a la main.
+interface FeedbackNomSub {
+  n: number;
+  libelle: string;
+}
+
+const feedbackNomsSub = new Map<number, (f: FeedbackNomSub) => void>();
+
+listen<FeedbackNomSub>("eos-sub-name-feedback", (event) => {
+  const cb = feedbackNomsSub.get(event.payload.n);
+  if (cb) cb(event.payload);
+});
+
 // ── Barre de reglages (hote + port + bouton « connecter ») ──────────────
 function monterBarre(racine: HTMLElement) {
   const barre = document.createElement("div");
@@ -67,11 +83,22 @@ function monterBarre(racine: HTMLElement) {
       statut.className = "statut ok";
       statut.textContent = `Connecte a ${h}:${p}`;
       localStorage.setItem("magic-osc.destination", JSON.stringify({ hote: h, port: p }));
+      demanderNomsSubmasters();
     } catch (e) {
       statut.className = "statut ko";
       statut.textContent = `Echec : ${e}`;
     }
   });
+}
+
+// Demande le nom des 20 submasters a la console, etalee sur quelques
+// centaines de ms pour ne pas arroser Eos de 20 requetes simultanees.
+function demanderNomsSubmasters() {
+  for (let i = 1; i <= 20; i++) {
+    setTimeout(() => {
+      invoke("eos_sub_demander_nom", { n: i }).catch(() => {});
+    }, i * 30);
+  }
 }
 
 // ── Encoder rotatif (dial drag vertical) ────────────────────────────────
@@ -181,20 +208,50 @@ function monterFader(opts: {
   classe: string;
   surValeur: (v: number) => void;
   avecBump?: { surPress: (p: boolean) => void };
+  // Group/Assert/Load : actions ponctuelles (pas de press/release distinct,
+  // Eos les traite comme une impulsion). Nom du sub recupere via
+  // eos_sub_demander_nom et affiche au-dessus de la piste.
+  avecActionsSub?: {
+    numeroSub: number;
+    surGroup: () => void;
+    surAssert: () => void;
+    surLoad: () => void;
+  };
 }) {
   const bloc = document.createElement("div");
   bloc.className = opts.classe;
   bloc.innerHTML = `
     <div class="num">${opts.numero}</div>
+    ${opts.avecActionsSub ? `<div class="nom-sub">—</div>` : ""}
     <div class="piste"><div class="poignee"></div></div>
     <div class="valeur">0 %</div>
     ${opts.avecBump ? `<button class="bump">BUMP</button>` : ""}
+    ${opts.avecActionsSub ? `
+      <div class="actions-sub">
+        <button class="action-grp" title="Group">GRP</button>
+        <button class="action-assert" title="Assert">AST</button>
+        <button class="action-load" title="Load">LD</button>
+      </div>
+    ` : ""}
   `;
   opts.parent.appendChild(bloc);
 
   const piste = bloc.querySelector<HTMLDivElement>(".piste")!;
   const poignee = bloc.querySelector<HTMLDivElement>(".poignee")!;
   const valeurAff = bloc.querySelector<HTMLDivElement>(".valeur")!;
+
+  if (opts.avecActionsSub) {
+    const nomAff = bloc.querySelector<HTMLDivElement>(".nom-sub")!;
+    feedbackNomsSub.set(opts.avecActionsSub.numeroSub, (f) => {
+      nomAff.textContent = f.libelle || "—";
+    });
+    bloc.querySelector<HTMLButtonElement>(".action-grp")!
+      .addEventListener("click", () => opts.avecActionsSub!.surGroup());
+    bloc.querySelector<HTMLButtonElement>(".action-assert")!
+      .addEventListener("click", () => opts.avecActionsSub!.surAssert());
+    bloc.querySelector<HTMLButtonElement>(".action-load")!
+      .addEventListener("click", () => opts.avecActionsSub!.surLoad());
+  }
 
   let valeur = opts.valeurInitiale; // 0..1
 
@@ -251,6 +308,37 @@ function monterFader(opts: {
   return { placerPoignee };
 }
 
+// ── Boutons de categorie (Intens, Focus, Color, Shutter, Image, Form) ──
+// Boutons d'attribut physiques d'une Ion/Ion XE : ils ne changent rien
+// directement, ils filtrent/affectent les 4 encodeurs au-dessus. Noms OSC
+// confirmes dans le document officiel "Eos OSC Keys".
+const CATEGORIES_EOS: { nom: string; libelle: string }[] = [
+  { nom: "intensity", libelle: "Intens" },
+  { nom: "focus", libelle: "Focus" },
+  { nom: "color", libelle: "Color" },
+  { nom: "shutter", libelle: "Shutter" },
+  { nom: "image", libelle: "Image" },
+  { nom: "form", libelle: "Form" },
+];
+
+function monterCategories(parent: HTMLElement) {
+  const bloc = document.createElement("div");
+  bloc.className = "categories";
+  parent.appendChild(bloc);
+  for (const cat of CATEGORIES_EOS) {
+    const b = document.createElement("button");
+    b.className = "categorie";
+    b.textContent = cat.libelle;
+    bloc.appendChild(b);
+    const press = () => { b.classList.add("actif"); invoke("eos_key", { name: cat.nom, press: true }).catch(() => {}); };
+    const release = () => { b.classList.remove("actif"); invoke("eos_key", { name: cat.nom, press: false }).catch(() => {}); };
+    b.addEventListener("pointerdown", (e) => { e.preventDefault(); press(); });
+    b.addEventListener("pointerup", release);
+    b.addEventListener("pointerleave", release);
+    b.addEventListener("pointercancel", release);
+  }
+}
+
 // ── Bouton Go / Stop (press/release distincts pour un flash propre) ────
 function monterBoutonPersistant(parent: HTMLElement, classe: string, texte: string,
                                  surEtat: (press: boolean) => void) {
@@ -278,13 +366,17 @@ async function demarrer() {
   console_.className = "console";
   racine.appendChild(console_);
 
+  // Boutons de categorie d'attribut, juste au-dessus des encodeurs (comme
+  // sur une vraie Ion/Ion XE).
+  monterCategories(console_);
+
   // Haut : 4 encoders + 1 level wheel
   const haut = document.createElement("div");
   haut.className = "haut";
   console_.appendChild(haut);
 
-  // Encoders : chacun choisit son parametre Eos via un menu, voir
-  // monterEncoder plus haut. Pas d'assignation par defaut.
+  // Encoders : affichent automatiquement ce qu'Eos leur assigne (feedback
+  // /eos/out/active/wheel/N), voir monterEncoder plus haut.
   monterEncoder(haut, 1);
   monterEncoder(haut, 2);
   monterEncoder(haut, 3);
@@ -308,6 +400,12 @@ async function demarrer() {
       classe: "fader",
       surValeur: (v) => { invoke("eos_fader_submaster", { n: i, valeur: v }).catch(() => {}); },
       avecBump: { surPress: (p) => { invoke("eos_fader_bump", { n: i, press: p }).catch(() => {}); } },
+      avecActionsSub: {
+        numeroSub: i,
+        surGroup: () => { invoke("eos_sub_group", { n: i }).catch(() => {}); },
+        surAssert: () => { invoke("eos_sub_assert", { n: i }).catch(() => {}); },
+        surLoad: () => { invoke("eos_sub_load", { n: i }).catch(() => {}); },
+      },
     });
   }
 

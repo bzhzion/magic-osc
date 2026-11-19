@@ -148,6 +148,73 @@ fn eos_wheel_level(delta: f32) -> Result<(), String> {
     osc::envoyer(consoles::etc_eos::WHEEL_LEVEL, vec![OscType::Float(delta)])
 }
 
+/// Touche generique /eos/key/<name>, press/release. Utilisee pour les 6
+/// boutons de categorie (Intens, Focus, Color, Shutter, Image, Form) et
+/// comme brique pour Group/Assert/Load ci-dessous.
+#[tauri::command]
+fn eos_key(name: String, press: bool) -> Result<(), String> {
+    let adresse = format!("{}{name}", consoles::etc_eos::KEY_PREFIXE);
+    let v = if press { 1.0 } else { 0.0 };
+    osc::envoyer(&adresse, vec![OscType::Float(v)])
+}
+
+/// Selectionne le submaster N sur la ligne de commande Eos. Prealable a
+/// Group/Assert/Load, qui agissent sur le sub actuellement cible.
+fn selectionner_sub(n: u8) -> Result<(), String> {
+    osc::envoyer(consoles::etc_eos::SUB_SELECT, vec![OscType::Int(n as i32)])
+}
+
+fn presser_relacher_key(nom: &str) -> Result<(), String> {
+    let adresse = format!("{}{nom}", consoles::etc_eos::KEY_PREFIXE);
+    osc::envoyer(&adresse, vec![OscType::Float(1.0)])?;
+    osc::envoyer(&adresse, vec![OscType::Float(0.0)])
+}
+
+/// Reproduit la sequence console « selectionner le sub N, presser Group » :
+/// il n'existe pas d'adresse /eos/sub/<N>/group dediee, Group est une
+/// touche generale qui agit sur la cible courante.
+#[tauri::command]
+fn eos_sub_group(n: u8) -> Result<(), String> {
+    if !(1..=20).contains(&n) {
+        return Err(format!("submaster hors plage : {n}"));
+    }
+    selectionner_sub(n)?;
+    presser_relacher_key(consoles::etc_eos::KEY_GROUP)
+}
+
+/// Idem pour Assert.
+#[tauri::command]
+fn eos_sub_assert(n: u8) -> Result<(), String> {
+    if !(1..=20).contains(&n) {
+        return Err(format!("submaster hors plage : {n}"));
+    }
+    selectionner_sub(n)?;
+    presser_relacher_key(consoles::etc_eos::KEY_ASSERT)
+}
+
+/// Idem pour Load.
+#[tauri::command]
+fn eos_sub_load(n: u8) -> Result<(), String> {
+    if !(1..=20).contains(&n) {
+        return Err(format!("submaster hors plage : {n}"));
+    }
+    selectionner_sub(n)?;
+    presser_relacher_key(consoles::etc_eos::KEY_LOAD)
+}
+
+/// Demande le nom (label) du submaster N a la console. La reponse arrive
+/// de maniere asynchrone via l'evenement Tauri `eos-sub-name-feedback`
+/// (voir osc.rs), pas en valeur de retour : OSC est un protocole sans
+/// requete/reponse synchrone.
+#[tauri::command]
+fn eos_sub_demander_nom(n: u8) -> Result<(), String> {
+    if !(1..=20).contains(&n) {
+        return Err(format!("submaster hors plage : {n}"));
+    }
+    let adresse = format!("{}{n}", consoles::etc_eos::SUB_GET_PREFIXE);
+    osc::envoyer(&adresse, vec![])
+}
+
 #[derive(Serialize)]
 struct InfoDestination {
     hote: Option<String>,
@@ -186,6 +253,11 @@ fn main() {
             eos_key_stop,
             eos_wheel_switch,
             eos_wheel_level,
+            eos_key,
+            eos_sub_group,
+            eos_sub_assert,
+            eos_sub_load,
+            eos_sub_demander_nom,
         ])
         .run(tauri::generate_context!())
         .expect("echec du demarrage de magic-osc");

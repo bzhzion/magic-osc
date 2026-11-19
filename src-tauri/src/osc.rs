@@ -3,13 +3,20 @@
 //! `rosc` fait l'encodage/decodage. La socket d'envoi et la socket d'ecoute
 //! du feedback sont la MEME socket : Eos repond au port d'ou vient la
 //! requete (comportement standard d'un serveur OSC UDP), donc ouvrir une
-//! deuxieme socket a part pour ecouter ne recevrait jamais rien. Rouvrir une
-//! socket a chaque envoi ajoute par ailleurs 20-50 ms de latence Windows,
-//! inacceptable pour un encodeur qui doit sentir instantane sous le doigt.
+//! deuxieme socket a part pour ecouter ne recevrait jamais rien.
 //!
-//! Le feedback Eos (quel parametre est assigne a quel encodeur, et sa
-//! valeur courante) arrive sur `/eos/out/active/wheel/<1..4>`. On le
-//! retransmet au frontend via un evenement Tauri `eos-wheel-feedback`.
+//! Sources (Eos Family Show Control User Guide, Rev C, chapitres "Active
+//! Parameters" et "Implicit OSC Output") :
+//! - Eos n'envoie son feedback QUE si « Transmit » (UDP TX) est coche cote
+//!   console, dans Setup > System > Show Control > OSC. « Receive » seul
+//!   (necessaire pour GO/STOP/faders) ne suffit PAS a recevoir ce feedback.
+//! - `/eos/reset` force Eos a renvoyer IMMEDIATEMENT tout son etat implicite
+//!   courant (wheels actifs, commande en cours...), au lieu d'attendre le
+//!   prochain changement. Envoye juste apres connexion.
+//! - Feedback des 4 wheels contextuels : `/eos/out/active/wheel/<1..4>`,
+//!   DEUX arguments separes (string = nom du parametre, nombre = valeur
+//!   courante), PAS une seule chaine "label [valeur]" comme le laissait
+//!   supposer un essai precedent base sur du code tiers non officiel.
 
 use rosc::encoder;
 use rosc::{OscMessage, OscPacket, OscType};
@@ -44,14 +51,7 @@ impl Emetteur {
     }
 }
 
-/// Tampon partage entre toutes les commandes Tauri. Initialise au premier
-/// appel a `regler_destination`.
 pub static EMETTEUR: Mutex<Option<Emetteur>> = Mutex::new(None);
-
-/// Compteur de connexion : chaque appel a `regler_destination` l'incremente,
-/// le thread d'ecoute en cours compare sa propre valeur a chaque reveil et
-/// s'arrete si elle a change. Evite d'accumuler des threads d'ecoute morts
-/// a chaque reconnexion (changer d'IP de console en cours de route).
 static GENERATION: AtomicU64 = AtomicU64::new(0);
 
 pub fn regler_destination(hote: &str, port: u16, app: AppHandle) -> Result<(), String> {
@@ -67,6 +67,14 @@ pub fn regler_destination(hote: &str, port: u16, app: AppHandle) -> Result<(), S
         .map_err(|e| format!("impossible de dupliquer la socket : {e}"))?;
 
     let generation = GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
+
+    // /eos/reset : force Eos a renvoyer tout de suite son etat implicite
+    // courant (wheels actifs...) sans attendre un changement. Sans ca,
+    // l'UI resterait vide jusqu'a ce que l'operateur touche quelque chose
+    // sur la console.
+    if let Err(e) = emetteur.envoyer("/eos/reset", vec![]) {
+        eprintln!("[osc] /eos/reset a echoue : {e}");
+    }
 
     {
         let mut tampon = EMETTEUR.lock().unwrap();
@@ -89,14 +97,15 @@ pub fn envoyer(adresse: &str, args: Vec<OscType>) -> Result<(), String> {
 struct FeedbackEncodeur {
     index: u8,
     libelle: String,
-    valeur: Option<i64>,
+    valeur: Option<f64>,
 }
 
-/// Lance un thread qui lit en boucle la socket partagee avec l'emission et
-/// retransmet au frontend tout feedback de roue active Eos. Timeout court
-/// pour pouvoir verifier regulierement si une reconnexion a eu lieu
-/// (`GENERATION` a change) et s'arreter proprement sans fermer violemment
-/// la socket en cours d'usage.
+#[derive(Serialize, Clone)]
+struct FeedbackNomSub {
+    n: u8,
+    libelle: String,
+}
+
 fn demarrer_ecoute_feedback(socket: UdpSocket, generation: u64, app: AppHandle) {
     if let Err(e) = socket.set_read_timeout(Some(Duration::from_millis(400))) {
         eprintln!("[osc] set_read_timeout a echoue : {e}");
@@ -136,33 +145,54 @@ fn traiter_paquet_entrant(paquet: &OscPacket, app: &AppHandle) {
     }
 }
 
-/// Feedback attendu : `/eos/out/active/wheel/<1..4>` avec un argument
-/// string au format `"<label>  [<valeur>]"`. Label vide = encodeur
-/// actuellement inassigne (aucun parametre sous ce numero sur la console).
-fn traiter_message_entrant(m: &OscMessage, app: &AppHandle) {
-    let segments: Vec<&str> = m.addr.split('/').filter(|s| !s.is_empty()).collect();
-    if segments.len() != 5
-        || segments[0] != "eos"
-        || segments[1] != "out"
-        || segments[2] != "active"
-        || segments[3] != "wheel"
-    {
-        return;
+fn osc_type_vers_f64(v: &OscType) -> Option<f64> {
+    match v {
+        OscType::Int(i) => Some(*i as f64),
+        OscType::Float(f) => Some(*f as f64),
+        OscType::Double(d) => Some(*d),
+        OscType::String(s) => s.parse::<f64>().ok(),
+        _ => None,
     }
-    let Ok(index) = segments[4].parse::<u8>() else { return };
-    let Some(OscType::String(brut)) = m.args.first() else { return };
-    let (libelle, valeur) = parser_label_valeur(brut);
-    let evt = FeedbackEncodeur { index, libelle, valeur };
-    let _ = app.emit("eos-wheel-feedback", evt);
 }
 
-fn parser_label_valeur(brut: &str) -> (String, Option<i64>) {
-    if let Some(pos) = brut.find("  [") {
-        let label = brut[..pos].to_string();
-        let reste = &brut[pos + 3..];
-        let valeur = reste.trim_end_matches(']').trim().parse::<i64>().ok();
-        (label, valeur)
-    } else {
-        (brut.trim().to_string(), None)
+fn traiter_message_entrant(m: &OscMessage, app: &AppHandle) {
+    let segments: Vec<&str> = m.addr.split('/').filter(|s| !s.is_empty()).collect();
+
+    // /eos/out/active/wheel/<1..4> : DEUX arguments [nom (string), valeur
+    // (nombre)], format officiel confirme (Eos Family Show Control User
+    // Guide, section "Active Parameters").
+    if segments.len() == 5
+        && segments[0] == "eos"
+        && segments[1] == "out"
+        && segments[2] == "active"
+        && segments[3] == "wheel"
+    {
+        if let Ok(index) = segments[4].parse::<u8>() {
+            let libelle = match m.args.first() {
+                Some(OscType::String(s)) => s.clone(),
+                _ => String::new(),
+            };
+            let valeur = m.args.get(1).and_then(osc_type_vers_f64);
+            let evt = FeedbackEncodeur { index, libelle, valeur };
+            let _ = app.emit("eos-wheel-feedback", evt);
+        }
+        return;
+    }
+
+    // /eos/out/get/sub/<n>/list/<index>/<count> : reponse a /eos/get/sub/<n>.
+    // args[2] = label (string). Voir Appendix: Advanced OSC, bloc "SUB (1 OF 2)".
+    if segments.len() == 8
+        && segments[0] == "eos"
+        && segments[1] == "out"
+        && segments[2] == "get"
+        && segments[3] == "sub"
+        && segments[5] == "list"
+    {
+        if let Ok(n) = segments[4].parse::<u8>() {
+            if let Some(OscType::String(label)) = m.args.get(2) {
+                let evt = FeedbackNomSub { n, libelle: label.clone() };
+                let _ = app.emit("eos-sub-name-feedback", evt);
+            }
+        }
     }
 }

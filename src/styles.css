@@ -44,9 +44,25 @@ html, body { margin: 0; padding: 0; height: 100%; background: var(--fond); color
 /* ── Console ──────────────────────────────────────────────────────────── */
 .console {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   gap: 16px;
   padding: 16px;
+}
+
+/* ── Boutons de categorie (Intens/Focus/Color/Shutter/Image/Form) ──────── */
+.categories {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.categorie {
+  height: 40px;
+  background: var(--encore); border: 1px solid var(--bord); color: var(--texte);
+  border-radius: 6px; font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; touch-action: manipulation;
+}
+.categorie:active, .categorie.actif {
+  background: var(--accent); color: white; border-color: var(--accent);
 }
 
 /* --- Haut : encoders + wheel --- */
@@ -163,6 +179,21 @@ html, body { margin: 0; padding: 0; height: 100%; background: var(--fond); color
 }
 .fader .bump:active, .fader .bump.actif {
   background: var(--accent); color: white; border-color: var(--accent);
+}
+.fader .nom-sub {
+  font-size: 9px; color: var(--texte-muet); text-align: center;
+  max-width: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fader .actions-sub {
+  display: flex; flex-direction: column; gap: 3px; width: 100%;
+}
+.fader .actions-sub button {
+  width: 100%; height: 20px;
+  background: var(--fond-2); border: 1px solid var(--bord); color: var(--texte-muet);
+  border-radius: 4px; font-size: 8px; cursor: pointer; touch-action: manipulation;
+}
+.fader .actions-sub button:active {
+  background: var(--accent-stop); color: white; border-color: var(--accent-stop);
 }
 
 /* --- Master Playback (2 grands faders + Go + Stop) --- */

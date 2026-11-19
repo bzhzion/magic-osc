@@ -2,72 +2,88 @@
 //!
 //! Etape 1 : ETC Eos (famille Ion/Ion XE/Element 2/Gio/Ti). Les adresses OSC
 //! suivent la reference officielle ETC « Eos Family Show Control User
-//! Guide », chapitre OSC, port UDP par defaut 8000 cote console.
+//! Guide » Rev C, chapitre OSC + Appendix: Advanced OSC. Port UDP par
+//! defaut 8000 cote console.
 //!
-//! Prerequis cote console : le serveur OSC doit etre active dans
-//! Setup > System > Show Control > OSC. L'adresse IP de la machine qui
-//! envoie (ou son broadcast) doit etre renseignee cote console si
-//! « OSC RX IP » est filtre.
+//! Prerequis cote console (Setup > System > Show Control > OSC) :
+//! - « Receive » pour que la console execute nos commandes (GO, faders...).
+//! - « Transmit » pour que la console nous renvoie du feedback (quel
+//!   parametre est assigne a chaque encodeur, nom des subs...). Sans
+//!   Transmit, GO/STOP/faders marchent mais les encodeurs restent vides :
+//!   Eos ne nous dit jamais ce qu'il faudrait y afficher.
 //!
 //! Les 13+ banques de JustMakeQ seront portees aux etapes suivantes.
-//! Pour l'instant, Eos est codee en dur dans les commandes Tauri :
-//! l'etape 3 extraira ces chaines en table pour les presenter dans l'UI
-//! « choisir une action sur Eos ».
 
 pub mod etc_eos {
     //! Adresses OSC ETC Eos utilisees par la console graphique etape 2.
 
     // ── Submasters 1..20 ───────────────────────────────────────────────────
     // `/eos/sub/<N>` pilote directement le submaster N, sans exiger la
-    // configuration d'un « OSC Fader Bank » cote console. `/eos/fader/<bank>/<N>`
-    // existe aussi mais demande que l'utilisateur ait d'abord cree un bank
-    // OSC dans Setup > Show Control > OSC (sinon le message est ignore).
-    // `/eos/sub/<N>` evite ce prerequis.
+    // configuration d'un « OSC Fader Bank » cote console.
     pub const SUB_PREFIXE: &str = "/eos/sub/";
-    // Bump (fire) sous chaque fader : /eos/sub/<N>/fire, int 1 = press,
-    // int 0 = release.
+    // Bump (fire) : /eos/sub/<N>/fire, arg 1.0 = press, 0.0 = release.
     pub const SUB_FIRE_SUFFIXE: &str = "/fire";
+    // Selection du sub (necessaire avant Group/Assert/Load, qui agissent
+    // sur le sub actuellement cible) : /eos/sub + int N.
+    pub const SUB_SELECT: &str = "/eos/sub";
+    // Requete du nom : /eos/get/sub/<N>, Eos repond sur
+    // /eos/out/get/sub/<N>/list/<index>/<count> avec le label en 3e argument
+    // (index 2) -- voir Appendix: Advanced OSC, bloc "SUB (1 OF 2)".
+    pub const SUB_GET_PREFIXE: &str = "/eos/get/sub/";
 
     // ── Master Playback A et B (les deux grands faders de droite) ──────────
-    // Deux approches possibles :
-    // - `/eos/user/1/fader/1/1` pour le Master Playback, demande que
-    //   Setup > OSC > Fader Bank 1 soit configure sur « Master Playback ».
-    // - Plus robuste : la plupart des utilisateurs manipulent le Master
-    //   Playback via les keys GO / STOP, le fader en lui-meme ne bougeant
-    //   qu'a l'allumage. On expose quand meme un fader soft qui envoie
-    //   `/eos/user/1/fader/1/1`, en sachant que la console l'ignorera si
-    //   le bank 1 n'est pas assigne au Master Playback.
+    // Demande que Setup > OSC > Fader Bank 1 soit configure sur
+    // « Master Playback » pour avoir un effet ; GO/STOP marchent sans ca
+    // car ils passent par les touches, pas par le fader.
     pub const MASTER_FADER_1: &str = "/eos/user/1/fader/1/1";
     pub const MASTER_FADER_2: &str = "/eos/user/1/fader/1/2";
 
-    // GO et STOP/BACK : touches physiques du Master Playback. L'API OSC Eos
-    // les expose en /eos/key/<nom>, avec un argument int 1 au press et 0 au
-    // release. Le nom de la touche STOP/BACK est `stop` tout court
-    // (verifie dans la reference Eos Family OSC + confirme par le code de
-    // Luminosus Eos Edition).
     pub const KEY_GO: &str = "/eos/key/go_0";
     pub const KEY_STOP: &str = "/eos/key/stop";
 
+    // ── Touches generiques /eos/key/<nom> ──────────────────────────────────
+    // Arg : nombre, 1.0 = press, 0.0 = release (section "Supported OSC Input").
+    // Noms confirmes dans le document officiel "Eos OSC Keys" (liste
+    // exhaustive des cles OSC <-> macro interne ETC).
+    pub const KEY_PREFIXE: &str = "/eos/key/";
+
+    // Boutons de categorie d'attribut (bandeau au-dessus des encodeurs sur
+    // Ion/Ion XE). Noms OSC confirmes dans "Eos OSC Keys.pdf" : intensity,
+    // focus, color, shutter, image, form.
+    pub const KEY_INTENSITY: &str = "intensity";
+    pub const KEY_FOCUS: &str = "focus";
+    pub const KEY_COLOR: &str = "color";
+    pub const KEY_SHUTTER: &str = "shutter";
+    pub const KEY_IMAGE: &str = "image";
+    pub const KEY_FORM: &str = "form";
+
+    // Boutons par submaster : Group, Assert, Load. Pas d'adresse OSC dediee
+    // par sub pour ces trois actions (contrairement a /sub/<N>/fire) :
+    // le fonctionnement reel sur console est "selectionner le sub, puis
+    // presser la touche". On reproduit cette sequence : SUB_SELECT + N,
+    // puis KEY_PREFIXE + nom en press puis release.
+    pub const KEY_GROUP: &str = "group";
+    pub const KEY_ASSERT: &str = "assert";
+    pub const KEY_LOAD: &str = "load";
+
     // ── Encoders (4 boutons rotatifs au-dessus de l'ecran) ─────────────────
-    // Deux adresses complementaires, confirmees par le code source de
-    // Luminosus Eos Edition (EosActiveChannelsManager.cpp) :
+    // Confirme par le document officiel, section "Active Parameters" :
     //
-    // - EN SORTIE (feedback, Eos -> magic-osc) : `/eos/out/active/wheel/<1..4>`
-    //   avec un argument string "<label>  [<valeur>]". Eos l'envoie des que
-    //   la selection change ou qu'un encodeur change de parametre/valeur.
-    //   Label vide = cet encodeur n'a aucun parametre assigne actuellement.
-    //   C'est ce qui permet a magic-osc d'afficher le BON nom sous chaque
-    //   encodeur sans que l'utilisateur ait a le choisir lui-meme.
+    // - EN SORTIE (feedback, Eos -> magic-osc), section "Implicit OSC
+    //   Output" : `/eos/out/active/wheel/<1..4>` avec DEUX arguments
+    //   separes (string = nom du parametre courant, nombre = valeur
+    //   courante). Envoye automatiquement des que la selection ou le
+    //   parametre assigne change -- MAIS UNIQUEMENT SI "Transmit" est
+    //   active cote console (Setup > System > Show Control > OSC).
+    //   Label vide = encodeur actuellement inassigne.
     //
-    // - EN ENTREE (commande, magic-osc -> Eos) : `/eos/active/switch/<1..4>`
-    //   avec un delta flottant. Eos route en interne vers le parametre
-    //   actuellement affecte a cet index, quel qu'il soit : adresser par
-    //   INDEX physique, jamais par nom, contrairement a ce qu'un premier
-    //   essai avait suppose.
+    // - EN ENTREE (commande, magic-osc -> Eos), section "Switch" :
+    //   `/eos/active/switch/<1..4>` avec un delta flottant. Eos route en
+    //   interne vers le parametre actuellement affecte a cet index : on
+    //   adresse par index physique (1-based), jamais par nom.
     pub const OUT_ACTIVE_WHEEL_PREFIXE: &str = "/eos/out/active/wheel/";
     pub const ACTIVE_SWITCH_PREFIXE: &str = "/eos/active/switch/";
 
     // ── Level Wheel ────────────────────────────────────────────────────────
-    // La grosse molette d'intensite. Delta float.
     pub const WHEEL_LEVEL: &str = "/eos/wheel/level";
 }
