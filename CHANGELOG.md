@@ -27,6 +27,11 @@ est renommée en numéro de version au moment de poser le tag.
   catégorie reste maintenant allumé (sélection « latchée ») jusqu'au suivant.
 
 ### Corrigé (console ETC Eos)
+- **Survoler un bouton (catégorie, Go/Stop, bump) le déclenchait comme un vrai clic** :
+  `pointerleave` se déclenche au simple survol de la souris, pas seulement en relâchant un
+  clic en cours. Sans garde, passer la souris sur un bouton de catégorie faisait avancer sa
+  sous-page tout seul. Ajout d'un drapeau « enfoncé » sur les trois boutons concernés :
+  le relâchement n'a plus d'effet s'il n'y a pas eu de pression réelle au préalable.
 - **Répartition des mots-clés de pagination par catégorie refaite d'après la doc officielle
   ETC** (support.etcconnect.com — classe d'attribut « Beam » divisée en 3 sous-catégories) :
   Shutter = dispositifs de **cadrage** (`Frame Angle/Thrust A-D`, pas Iris/Edge/Zoom comme le

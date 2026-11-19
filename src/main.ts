@@ -374,8 +374,16 @@ function monterFader(opts: {
 
   if (opts.avecBump) {
     const b = bloc.querySelector<HTMLButtonElement>(".bump")!;
-    const press = () => { b.classList.add("actif"); opts.avecBump!.surPress(true); };
-    const release = () => { b.classList.remove("actif"); opts.avecBump!.surPress(false); };
+    // Garde necessaire : pointerleave se declenche au simple survol (sans
+    // clic), pas seulement en relachant un clic en cours.
+    let enfonce = false;
+    const press = () => { enfonce = true; b.classList.add("actif"); opts.avecBump!.surPress(true); };
+    const release = () => {
+      if (!enfonce) return;
+      enfonce = false;
+      b.classList.remove("actif");
+      opts.avecBump!.surPress(false);
+    };
     b.addEventListener("pointerdown", (e) => { e.preventDefault(); press(); });
     b.addEventListener("pointerup", release);
     b.addEventListener("pointerleave", release);
@@ -411,10 +419,18 @@ function monterCategories(parent: HTMLElement) {
     b.textContent = cat.libelle;
     bloc.appendChild(b);
     boutons.push(b);
+    // Garde necessaire : pointerleave se declenche au simple survol de la
+    // souris (sans clic), pas seulement en relachant un clic en cours. Sans
+    // ce drapeau, survoler un bouton de categorie faisait avancer sa
+    // sous-page comme un vrai clic.
+    let enfonce = false;
     const press = () => {
+      enfonce = true;
       invoke("eos_key", { name: cat.nom, press: true }).catch(() => {});
     };
     const release = () => {
+      if (!enfonce) return;
+      enfonce = false;
       invoke("eos_key", { name: cat.nom, press: false }).catch(() => {});
       // Selection "latchee" cote magic-osc (reste allumee jusqu'au prochain
       // bouton) : pilote la pagination des 4 encodeurs.
@@ -445,8 +461,16 @@ function monterBoutonPersistant(parent: HTMLElement, classe: string, texte: stri
   b.textContent = texte;
   parent.appendChild(b);
 
-  const press = () => { b.classList.add("actif"); surEtat(true); };
-  const release = () => { b.classList.remove("actif"); surEtat(false); };
+  // Garde necessaire : pointerleave se declenche au simple survol (sans
+  // clic), pas seulement en relachant un clic en cours.
+  let enfonce = false;
+  const press = () => { enfonce = true; b.classList.add("actif"); surEtat(true); };
+  const release = () => {
+    if (!enfonce) return;
+    enfonce = false;
+    b.classList.remove("actif");
+    surEtat(false);
+  };
   b.addEventListener("pointerdown", (e) => { e.preventDefault(); press(); });
   b.addEventListener("pointerup", release);
   b.addEventListener("pointerleave", release);
