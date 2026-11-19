@@ -55,10 +55,12 @@ est renommée en numéro de version au moment de poser le tag.
   qui est la méthode « Switch » (paramètres à bascule), pas « Wheel » (encodeurs rotatifs
   continus). Remplacé par `/eos/active/wheel/<1..4>`, qui correspond à la méthode utilisée par
   les vrais encodeurs physiques d'une Ion/Ion XE et à l'adresse de feedback déjà en place.
-- Le format du feedback `/eos/out/active/wheel/<1..4>` est **deux arguments séparés**
-  (chaîne = nom du paramètre, nombre = valeur courante), pas une seule chaîne
-  `"<label>  [<valeur>]"` comme le supposait la version précédente d'après du code tiers
-  non officiel (Luminosus Eos Edition, abandonné). magic-osc envoie maintenant
+- Le format réel du feedback `/eos/out/active/wheel/<1..4>` (confirmé par capture réseau
+  sur Eos Nomad, pas seulement par la doc) est **trois arguments**, tag OSC `,sif` (string,
+  int, float) — le Show Control User Guide n'en annonçait que deux. Le label contient déjà
+  la valeur sous forme texte (`"Intens  [69]"`), l'int est un champ non identifié, et la
+  vraie valeur numérique est le **float en position 2**, pas l'int en position 1 comme le
+  lisait la version précédente. magic-osc envoie maintenant
      `/eos/reset` juste après connexion (force Eos à republier tout de suite son état
      courant au lieu d'attendre un changement) et lit les deux arguments séparément.
 

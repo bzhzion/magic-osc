@@ -27,10 +27,13 @@
 //! - `/eos/reset` force Eos a renvoyer IMMEDIATEMENT tout son etat implicite
 //!   courant (wheels actifs, commande en cours...), au lieu d'attendre le
 //!   prochain changement. Envoye juste apres connexion.
-//! - Feedback des 4 wheels contextuels : `/eos/out/active/wheel/<1..4>`,
-//!   DEUX arguments separes (string = nom du parametre, nombre = valeur
-//!   courante), PAS une seule chaine "label [valeur]" comme le laissait
-//!   supposer un essai precedent base sur du code tiers non officiel.
+//! - Feedback des 4 wheels contextuels : `/eos/out/active/wheel/<1..4>`.
+//!   Le Show Control User Guide annonce DEUX arguments (string, nombre),
+//!   mais la capture reseau reelle (Eos Nomad, tcpdump) montre TROIS
+//!   arguments, type tag OSC ",sif" (string, int, float) : le label
+//!   embarque deja la valeur sous forme texte ("Intens  [69]"), l'int est
+//!   un champ non identifie, et la vraie valeur numerique est le FLOAT en
+//!   position 2. On lit position 2, pas position 1.
 
 use rosc::encoder;
 use rosc::{OscMessage, OscPacket, OscType};
@@ -193,7 +196,11 @@ fn traiter_message_entrant(m: &OscMessage, app: &AppHandle) {
                 Some(OscType::String(s)) => s.clone(),
                 _ => String::new(),
             };
-            let valeur = m.args.get(1).and_then(osc_type_vers_f64);
+            // Format reel observe (Eos Nomad, capture tcpdump) : 3 arguments
+            // (string, int, float) type tag ",sif", PAS 2 comme le laissait
+            // supposer le Show Control User Guide. La vraie valeur courante
+            // est le FLOAT en position 2, pas l'int en position 1.
+            let valeur = m.args.get(2).and_then(osc_type_vers_f64);
             let evt = FeedbackEncodeur { index, libelle, valeur };
             let _ = app.emit("eos-wheel-feedback", evt);
         }
