@@ -50,19 +50,17 @@ pub mod etc_eos {
     pub const KEY_PREFIXE: &str = "/eos/key/";
 
     // Boutons de PAGE D'ENCODEUR (bandeau au-dessus des encodeurs sur
-    // Ion/Ion XE) : ils changent la categorie CIA actuellement affichee, ce
-    // qui determine quels parametres ("Active Parameters") apparaissent sur
-    // les 4 encodeurs physiques. Noms confirmes dans "Eos OSC Keys.pdf" :
-    // suffixe interne `_CAT` (INTENSITY_CAT, FOCUS_CAT, COLOR_CAT,
-    // SHUTTER_CAT, IMAGE_CAT, FORM_CAT) -- PAS le prefixe
-    // `encoder_category_*` (ENCODER_CAT_OTHER/SPARE/BEAM/GRAPHIC/SHUTTER),
-    // teste sans aucun effet sur les encodeurs malgre son nom trompeur.
-    pub const KEY_ENC_CAT_INTENSITY: &str = "intensity";
-    pub const KEY_ENC_CAT_FOCUS: &str = "focus";
-    pub const KEY_ENC_CAT_COLOR: &str = "color";
-    pub const KEY_ENC_CAT_SHUTTER: &str = "shutter";
-    pub const KEY_ENC_CAT_IMAGE: &str = "image";
-    pub const KEY_ENC_CAT_FORM: &str = "form";
+    // Ion/Ion XE) : ils ne filtrent pas un affichage, ils CHANGENT quels
+    // parametres apparaissent sur les 4 encodeurs physiques. A ne pas
+    // confondre avec les touches "intensity"/"focus"/etc. (categorie
+    // d'affichage CIA, action differente). Noms confirmes dans
+    // "Eos OSC Keys.pdf" : prefixe encoder_category_<nom>.
+    pub const KEY_ENC_CAT_INTENSITY: &str = "encoder_category_intensity";
+    pub const KEY_ENC_CAT_FOCUS: &str = "encoder_category_focus";
+    pub const KEY_ENC_CAT_COLOR: &str = "encoder_category_color";
+    pub const KEY_ENC_CAT_SHUTTER: &str = "encoder_category_shutter";
+    pub const KEY_ENC_CAT_IMAGE: &str = "encoder_category_image";
+    pub const KEY_ENC_CAT_FORM: &str = "encoder_category_form";
 
     // ── Encoders (4 boutons rotatifs au-dessus de l'ecran) ─────────────────
     // Confirme par le document officiel, section "Active Parameters" :

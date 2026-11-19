@@ -311,18 +311,17 @@ function monterFader(opts: {
 }
 
 // ── Boutons de page d'encodeur (Intens, Focus, Color, Shutter, Image, Form) ──
-// Boutons physiques d'une Ion/Ion XE qui changent la categorie CIA affichee,
-// ce qui determine quels parametres sont assignes aux 4 encodeurs. Noms OSC
-// confirmes par leur suffixe interne "_CAT" dans "Eos OSC Keys" (INTENSITY_CAT,
-// FOCUS_CAT...). Le prefixe "encoder_category_*" teste avant n'avait aucun
-// effet malgre son nom trompeur.
+// Boutons physiques d'une Ion/Ion XE qui CHANGENT quels parametres sont
+// assignes aux 4 encodeurs au-dessus (pas un filtre d'affichage). Noms OSC
+// confirmes dans le document officiel "Eos OSC Keys" : prefixe
+// encoder_category_<nom>.
 const CATEGORIES_EOS: { nom: string; libelle: string }[] = [
-  { nom: "intensity", libelle: "Intens" },
-  { nom: "focus", libelle: "Focus" },
-  { nom: "color", libelle: "Color" },
-  { nom: "shutter", libelle: "Shutter" },
-  { nom: "image", libelle: "Image" },
-  { nom: "form", libelle: "Form" },
+  { nom: "encoder_category_intensity", libelle: "Intens" },
+  { nom: "encoder_category_focus", libelle: "Focus" },
+  { nom: "encoder_category_color", libelle: "Color" },
+  { nom: "encoder_category_shutter", libelle: "Shutter" },
+  { nom: "encoder_category_image", libelle: "Image" },
+  { nom: "encoder_category_form", libelle: "Form" },
 ];
 
 function monterCategories(parent: HTMLElement) {

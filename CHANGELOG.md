@@ -9,12 +9,6 @@ est renommée en numéro de version au moment de poser le tag.
 ## [Unreleased]
 
 ### Corrigé (console ETC Eos)
-- **Boutons de page d'encodeur sans effet** : les clés `encoder_category_*` (internes
-  ENCODER_CAT_OTHER/SPARE/BEAM/GRAPHIC/SHUTTER) n'ont, en test réel, aucun effet sur
-  l'assignation des encodeurs malgré leur nom. Retour aux clés `intensity`/`focus`/
-  `color`/`shutter`/`image`/`form`, dont le suffixe interne `_CAT` (INTENSITY_CAT,
-  FOCUS_CAT...) dans « Eos OSC Keys » correspond bien à un changement de catégorie CIA —
-  catégorie qui pilote les « Active Parameters » envoyés aux encodeurs.
 - **Vraie cause finale des encodeurs et du nom des subs muets** : le projet n'avait jamais
   de dossier `src-tauri/capabilities/`, donc la fenêtre tournait avec le jeu de permissions
   Tauri par défaut, qui n'inclut PAS `core:event:allow-listen`. Chaque appel JS `listen(...)`
