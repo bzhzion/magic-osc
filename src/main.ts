@@ -52,6 +52,8 @@ let pageCourante = 0;
 // - Shutter = dispositifs de CADRAGE (framing) : Frame Angle/Thrust A-D.
 // - Form = qualite/taille du faisceau : edge, zoom, iris, frost.
 // - Image = tout ce qui "tombe dans le faisceau" : gobos, effets, prismes.
+// Utilise UNIQUEMENT pour les categories sans sous-pages explicites
+// (SOUS_PAGES_CATEGORIE ci-dessous) -- Focus/Image/Form pour l'instant.
 const MOTS_CLES_CATEGORIE: Record<string, string[]> = {
   intensity: ["intens"],
   focus: ["pan", "tilt", "focus", "position"],
@@ -61,14 +63,45 @@ const MOTS_CLES_CATEGORIE: Record<string, string[]> = {
   shutter: ["frame", "shutter strobe"],
 };
 
+// Sous-pages EXPLICITES, confirmees emplacement par emplacement face a la
+// vraie console (la vraie console n'affiche PAS un decoupage generique par
+// bloc de 4 : l'espace RVB de Color a par exemple 3 parametres et laisse le
+// 4e emplacement VIDE au lieu d'enchainer sur Hue). Chaque groupe = UNE
+// sous-page, avec sa composition EXACTE (pas de remplissage par le groupe
+// suivant). Categorie absente d'ici => retombe sur MOTS_CLES_CATEGORIE avec
+// decoupage generique par bloc de 4 (approximatif, pas encore confirme).
+const SOUS_PAGES_CATEGORIE: Record<string, string[][]> = {
+  color: [
+    ["red", "green", "blue"], // espace RVB -- 4e emplacement reste vide
+    ["hue", "saturation"], // espace teinte/saturation
+    ["color priority", "color mix", "color temperature", "tint", "cri"],
+  ],
+  shutter: [
+    ["frame angle c", "frame thrust c", "frame angle a", "frame thrust a"],
+    ["frame angle d", "frame thrust d", "frame angle b", "frame thrust b"],
+    ["frame assembly"],
+  ],
+};
+
 // Recalcule, pour les 4 emplacements physiques, quel index OSC reel afficher
 // et piloter : soit les 4 premiers parametres (categorie par defaut), soit
-// la sous-page courante des parametres de la categorie choisie (filtrage
-// par mot-cle, puis decoupage en blocs de 4 selon `pageCourante`).
+// la sous-page courante de la categorie choisie.
 function recalculerPageEncodeurs() {
   let indices: number[];
   if (categorieActive === null) {
     indices = [1, 2, 3, 4];
+  } else if (SOUS_PAGES_CATEGORIE[categorieActive]) {
+    const pages = SOUS_PAGES_CATEGORIE[categorieActive];
+    pageCourante = ((pageCourante % pages.length) + pages.length) % pages.length;
+    const mots = pages[pageCourante];
+    indices = Array.from(tousLesWheels.entries())
+      .filter(([, f]) => {
+        const nom = f.libelle.split("  [")[0].trim().toLowerCase();
+        return nom.length > 0 && mots.some((m) => nom.includes(m));
+      })
+      .sort((a, b) => a[0] - b[0])
+      .map(([idx]) => idx)
+      .slice(0, 4);
   } else {
     const mots = MOTS_CLES_CATEGORIE[categorieActive] ?? [];
     const correspondants = Array.from(tousLesWheels.entries())

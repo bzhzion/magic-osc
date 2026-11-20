@@ -27,6 +27,13 @@ est renommée en numéro de version au moment de poser le tag.
   catégorie reste maintenant allumé (sélection « latchée ») jusqu'au suivant.
 
 ### Corrigé (console ETC Eos)
+- **Sous-pages Color incohérentes avec l'écran réel de la console** : le découpage
+  générique par bloc de 4 montrait Red/Green/Blue/Hue sur une même sous-page, alors que la
+  vraie console affiche l'espace RVB (Red/Green/Blue, 4ᵉ emplacement **vide**, pas rempli
+  par Hue) puis l'espace Teinte/Saturation sur une sous-page séparée. Ajout de sous-pages
+  **explicites** (composition exacte, sans remplissage automatique par le groupe suivant)
+  pour Color et Shutter, les deux seules categories confirmées face à l'écran réel pour
+  l'instant — Focus/Image/Form gardent le découpage générique par bloc de 4 en attendant.
 - **Survoler un bouton (catégorie, Go/Stop, bump) le déclenchait comme un vrai clic** :
   `pointerleave` se déclenche au simple survol de la souris, pas seulement en relâchant un
   clic en cours. Sans garde, passer la souris sur un bouton de catégorie faisait avancer sa
