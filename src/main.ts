@@ -47,20 +47,26 @@ let pageCourante = 0;
 // parametre ETC habituels de chaque categorie CIA. Heuristique necessaire
 // car Eos n'envoie aucune metadonnee de categorie par parametre -- peut
 // manquer un parametre au nom atypique selon le fabricant du projecteur.
-// Repartition confirmee par la doc officielle ETC (support.etcconnect.com,
-// classe d'attribut "Beam" divisee en 3 sous-categories) :
-// - Shutter = dispositifs de CADRAGE (framing) : Frame Angle/Thrust A-D.
-// - Form = qualite/taille du faisceau : edge, zoom, iris, frost.
-// - Image = tout ce qui "tombe dans le faisceau" : gobos, effets, prismes.
+// Repartition confirmee par le manuel officiel ETC ("Eos Family Operations
+// Manual", section "Setting Non-intensity Parameters with the Encoders" --
+// Form/Image/Shutter sont les 3 sous-categories de la classe d'attribut
+// "Beam") :
+// - Form = qualite du faisceau : "the iris, edge, frost, etc." + explicitement
+//   "Iris, Zoom, Strobe and IMF" (le manuel precise que Strobe est dans
+//   Form, PAS dans Shutter malgre son nom "Shutter Strobe").
+// - Image = "anything that drops into the gate" : gobo, prism, effects wheel.
+// - Shutter = "all of the framing devices" : Frame Angle/Thrust A-D.
 // Utilise UNIQUEMENT pour les categories sans sous-pages explicites
-// (SOUS_PAGES_CATEGORIE ci-dessous) -- Focus/Image/Form pour l'instant.
+// (SOUS_PAGES_CATEGORIE ci-dessous) -- Focus/Image/Form pour l'instant, le
+// manuel ne precisant pas d'ordre de page fixe pour celles-ci ("press
+// [Form] again to page through the remaining parameters").
 const MOTS_CLES_CATEGORIE: Record<string, string[]> = {
   intensity: ["intens"],
   focus: ["pan", "tilt", "focus", "position"],
   color: ["red", "green", "blue", "hue", "saturation", "color", "tint", "cri"],
-  form: ["edge", "zoom", "iris", "frost", "diffusion"],
+  form: ["edge", "zoom", "iris", "frost", "diffusion", "strobe", "imf", "pwm", "beam mspeed"],
   image: ["gobo", "animation", "effect", "prism", "beam fx"],
-  shutter: ["frame", "shutter strobe"],
+  shutter: ["frame"],
 };
 
 // Sous-pages EXPLICITES, confirmees emplacement par emplacement face a la

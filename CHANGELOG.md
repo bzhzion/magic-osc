@@ -27,6 +27,11 @@ est renommée en numéro de version au moment de poser le tag.
   catégorie reste maintenant allumé (sélection « latchée ») jusqu'au suivant.
 
 ### Corrigé (console ETC Eos)
+- **Mot-clé `strobe` mal classé dans Shutter au lieu de Form** : le manuel officiel ETC
+  (« Eos Family Operations Manual », section Form Control) précise explicitement que
+  « Iris, Zoom, Strobe and IMF » appartiennent à Form, pas à Shutter malgré le nom
+  `Shutter Strobe`. Shutter se limite désormais au mot-clé `frame` (dispositifs de
+  cadrage uniquement, conforme à « Shutter Control » : « all of the framing devices »).
 - **Sous-pages Color incohérentes avec l'écran réel de la console** : le découpage
   générique par bloc de 4 montrait Red/Green/Blue/Hue sur une même sous-page, alors que la
   vraie console affiche l'espace RVB (Red/Green/Blue, 4ᵉ emplacement **vide**, pas rempli
